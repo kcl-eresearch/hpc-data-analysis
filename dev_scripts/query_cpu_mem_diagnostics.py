@@ -2,20 +2,25 @@
 """Diagnostic script to investigate CPU and memory efficiency edge cases.
 
 Tests:
-1.  Does AllocCPUS (from tres_alloc) differ from cpus_req? (Could explain CPU eff > 100%)
-1b. Does cpus_req match the CPU value in tres_req? (Verify column vs TRES string consistency)
+1.  Does allocated CPUs differ from requested CPUs? (Could explain CPU eff > 100%)
+1b. Does cpus_req column match the CPU value in tres_req? (Verify column vs TRES string consistency)
 2.  Does mem_req encode --mem vs --mem-per-cpu via flag bit?
-3.  Does tres_req memory match mem_req, or is it per-cpu vs total?
+3.  Does tres_req memory match mem_req for both --mem and --mem-per-cpu jobs?
 4.  Are jobs with mem eff > 100% correlated with --mem-per-cpu?
 
-Saves output to cpu_mem_diagnostics_output.txt
+All data comes from the Slurm accounting database tables:
+- create_job_table: job-level records (cpus_req, mem_req, tres_req, tres_alloc, etc.)
+- create_step_table: step-level records (tres_usage_in_max for actual memory usage)
+- tres_table: TRES ID mappings (1=CPU, 2=memory in MB, 4=node, etc.)
+
+Saves output to output_cpu_mem_diagnostics.txt
 """
 
 import sys
 import mysql.connector
 import yaml
 
-OUTPUT_FILE = "cpu_mem_diagnostics_output.txt"
+OUTPUT_FILE = "output_cpu_mem_diagnostics.txt"
 
 with open("config.yaml", "r") as f:
     config = yaml.safe_load(f)
@@ -34,19 +39,16 @@ with open(OUTPUT_FILE, 'w') as f:
         print(text, file=f)
 
     # =========================================================================
-    # Part 1: cpus_req vs AllocCPUS (from tres_alloc TRES ID 1)
+    # Part 1: cpus_req vs tres_alloc CPU (requested vs allocated CPUs)
     # =========================================================================
     out("=" * 80)
-    out("PART 1: cpus_req vs AllocCPUS (TRES ID 1 from tres_alloc)")
+    out("PART 1: cpus_req vs tres_alloc CPU — requested vs allocated CPUs")
     out("=" * 80)
     out()
-    out("Note: sacct's AllocCPUS is not a column — it's parsed from tres_alloc.")
-    out("tres_alloc has format '1=N,...' where TRES ID 1 = CPU.")
-
-    # Check that tres_alloc column exists
-    cur.execute("SHOW COLUMNS FROM create_job_table LIKE 'tres_alloc'")
-    col = cur.fetchone()
-    out(f"tres_alloc column: {col}")
+    out("Columns (all from create_job_table):")
+    out("  - cpus_req: direct column storing requested CPUs")
+    out("  - tres_alloc: TRES-encoded string; TRES ID 1 = allocated CPUs")
+    out("    Format: '1=N,2=M,...' where 1=CPU, 2=memory(MB), 4=node, etc.")
 
     # Compare cpus_req vs tres_alloc CPU value
     try:
@@ -67,17 +69,20 @@ with open(OUTPUT_FILE, 'w') as f:
             LIMIT 30
         """)
         out()
-        out("cpus_req vs AllocCPUS (top 30 combos by frequency):")
-        out(f"  {'cpus_req':>10}  {'alloc_cpus':>12}  {'count':>10}  {'comparison':>15}")
-        for row in cur:
-            cpus_req, alloc_cpus, cnt = row
+        out("cpus_req vs tres_alloc CPU (top 30 combos by frequency):")
+        out(f"  {'cpus_req':>10}  {'tres_alloc':>12}  {'count':>12}  {'%':>8}  {'comparison':>15}")
+        out(f"  {'(column)':>10}  {'(TRES ID 1)':>12}")
+        rows = list(cur)
+        total_shown = sum(r[2] for r in rows)
+        for cpus_req, alloc_cpus, cnt in rows:
             if cpus_req == alloc_cpus:
                 cmp = "EQUAL"
             elif alloc_cpus > cpus_req:
                 cmp = "alloc > req"
             else:
                 cmp = "alloc < req"
-            out(f"  {cpus_req:>10}  {alloc_cpus:>12}  {cnt:>10}  {cmp:>15}")
+            pct = (cnt / total_shown * 100) if total_shown else 0
+            out(f"  {cpus_req:>10}  {alloc_cpus:>12}  {cnt:>12}  {pct:>7.2f}%  {cmp:>15}")
     except Exception as e:
         out(f"Error comparing: {e}")
 
@@ -102,8 +107,14 @@ with open(OUTPUT_FILE, 'w') as f:
             WHERE j.time_start > 0 AND j.time_end > 0
         """)
         row = cur.fetchone()
+        total, equal, differ = row
+        equal_pct = (equal / total * 100) if total else 0
+        differ_pct = (differ / total * 100) if total else 0
         out()
-        out(f"Summary: total={row[0]}, equal={row[1]}, differ={row[2]}")
+        out(f"Summary:")
+        out(f"  Total jobs:  {total:>12}")
+        out(f"  Equal:       {equal:>12}  ({equal_pct:>6.2f}%)")
+        out(f"  Differ:      {differ:>12}  ({differ_pct:>6.2f}%)")
     except Exception as e:
         out(f"Error counting: {e}")
 
@@ -130,22 +141,26 @@ with open(OUTPUT_FILE, 'w') as f:
             LIMIT 10
         """)
         out()
-        out("Sample jobs where cpus_req != AllocCPUS:")
-        out(f"  {'id_job':>10}  {'cpus_req':>10}  {'alloc_cpus':>12}  {'nodes':>6}  tres_req  /  tres_alloc")
+        out("Sample jobs where cpus_req (column) != tres_alloc CPU (TRES ID 1):")
+        out(f"  {'id_job':>10}  {'cpus_req':>10}  {'tres_alloc':>12}  {'nodes':>6}  tres_req / tres_alloc")
+        out(f"  {'':>10}  {'(column)':>10}  {'(TRES ID 1)':>12}  {'_alloc':>6}")
         for row in cur:
-            out(f"  {row[0]:>10}  {row[1]:>10}  {row[2]:>12}  {row[3]:>6}  {row[4]}  /  {row[5]}")
+            out(f"  {row[0]:>10}  {row[1]:>10}  {row[2]:>12}  {row[3]:>6}  {row[4]} / {row[5]}")
     except Exception as e:
         out(f"Error fetching differing jobs: {e}")
 
     # =========================================================================
-    # Part 1b: cpus_req vs tres_req CPU (TRES ID 1)
+    # Part 1b: cpus_req vs tres_req CPU (column vs TRES string consistency)
     # =========================================================================
     out()
     out("=" * 80)
-    out("PART 1b: cpus_req vs ReqCPUS (TRES ID 1 from tres_req)")
+    out("PART 1b: cpus_req vs tres_req CPU — column vs TRES string consistency")
     out("=" * 80)
     out()
-    out("Checking if cpus_req column matches the CPU value encoded in tres_req.")
+    out("Columns (all from create_job_table):")
+    out("  - cpus_req: direct column storing requested CPUs")
+    out("  - tres_req: TRES-encoded string; TRES ID 1 = requested CPUs")
+    out("Checking if these two sources of 'requested CPUs' are consistent.")
 
     # Compare cpus_req vs tres_req CPU value
     try:
@@ -167,16 +182,19 @@ with open(OUTPUT_FILE, 'w') as f:
         """)
         out()
         out("cpus_req vs tres_req CPU (top 30 combos by frequency):")
-        out(f"  {'cpus_req':>10}  {'tres_req_cpu':>14}  {'count':>10}  {'comparison':>15}")
-        for row in cur:
-            cpus_req, tres_req_cpu, cnt = row
+        out(f"  {'cpus_req':>10}  {'tres_req':>12}  {'count':>12}  {'%':>8}  {'comparison':>15}")
+        out(f"  {'(column)':>10}  {'(TRES ID 1)':>12}")
+        rows = list(cur)
+        total_shown = sum(r[2] for r in rows)
+        for cpus_req, tres_req_cpu, cnt in rows:
             if cpus_req == tres_req_cpu:
                 cmp = "EQUAL"
             elif tres_req_cpu > cpus_req:
                 cmp = "tres > col"
             else:
                 cmp = "tres < col"
-            out(f"  {cpus_req:>10}  {tres_req_cpu:>14}  {cnt:>10}  {cmp:>15}")
+            pct = (cnt / total_shown * 100) if total_shown else 0
+            out(f"  {cpus_req:>10}  {tres_req_cpu:>12}  {cnt:>12}  {pct:>7.2f}%  {cmp:>15}")
     except Exception as e:
         out(f"Error comparing: {e}")
 
@@ -201,8 +219,14 @@ with open(OUTPUT_FILE, 'w') as f:
             WHERE j.time_start > 0 AND j.time_end > 0
         """)
         row = cur.fetchone()
+        total, equal, differ = row
+        equal_pct = (equal / total * 100) if total else 0
+        differ_pct = (differ / total * 100) if total else 0
         out()
-        out(f"Summary: total={row[0]}, equal={row[1]}, differ={row[2]}")
+        out(f"Summary:")
+        out(f"  Total jobs:  {total:>12}")
+        out(f"  Equal:       {equal:>12}  ({equal_pct:>6.2f}%)")
+        out(f"  Differ:      {differ:>12}  ({differ_pct:>6.2f}%)")
     except Exception as e:
         out(f"Error counting: {e}")
 
@@ -231,10 +255,11 @@ with open(OUTPUT_FILE, 'w') as f:
         rows = cur.fetchall()
         out()
         if rows:
-            out("Sample jobs where cpus_req != tres_req CPU:")
-            out(f"  {'id_job':>10}  {'cpus_req':>10}  {'tres_req_cpu':>14}  tres_req")
+            out("Sample jobs where cpus_req (column) != tres_req (TRES ID 1):")
+            out(f"  {'id_job':>10}  {'cpus_req':>10}  {'tres_req':>12}  tres_req (full string)")
+            out(f"  {'':>10}  {'(column)':>10}  {'(TRES ID 1)':>12}")
             for row in rows:
-                out(f"  {row[0]:>10}  {row[1]:>10}  {row[2]:>14}  {row[3]}")
+                out(f"  {row[0]:>10}  {row[1]:>10}  {row[2]:>12}  {row[3]}")
         else:
             out("No jobs found where cpus_req != tres_req CPU (they always match)")
     except Exception as e:
@@ -245,13 +270,13 @@ with open(OUTPUT_FILE, 'w') as f:
     # =========================================================================
     out()
     out("=" * 80)
-    out("PART 2: mem_req flag bit (--mem vs --mem-per-cpu)")
+    out("PART 2: mem_req flag bit — --mem vs --mem-per-cpu distribution")
     out("=" * 80)
-
-    # Check mem_req column exists
-    cur.execute("SHOW COLUMNS FROM create_job_table LIKE 'mem_req'")
-    col = cur.fetchone()
-    out(f"mem_req column: {col}")
+    out()
+    out("Column (from create_job_table):")
+    out("  - mem_req: bigint(20) unsigned, stores requested memory")
+    out("    Bit 63 (MSB) encodes memory type: 0 = --mem (per-node), 1 = --mem-per-cpu")
+    out("    Lower 63 bits store the actual memory value in MB")
 
     # All memory-related columns
     out()
@@ -260,21 +285,29 @@ with open(OUTPUT_FILE, 'w') as f:
     for row in cur:
         out(f"  {row}")
 
-    # Check flag bit distribution
+    # Check flag bit distribution - fixed query using subquery to avoid GROUP BY alias issue
     out()
-    out("mem_req flag bit distribution (bit 63 = --mem-per-cpu):")
+    out("mem_req flag bit distribution:")
     try:
         cur.execute("""
-            SELECT
-                CASE WHEN mem_req & 0x8000000000000000 != 0 THEN 'per-cpu (flag set)'
-                     ELSE 'per-node (no flag)' END as mem_type,
-                COUNT(*) as cnt
-            FROM create_job_table
-            WHERE time_start > 0 AND time_end > 0
+            SELECT mem_type, COUNT(*) as cnt
+            FROM (
+                SELECT
+                    CASE WHEN mem_req & 0x8000000000000000 != 0 THEN '--mem-per-cpu (bit 63 set)'
+                         ELSE '--mem (per-node, no flag)' END as mem_type
+                FROM create_job_table
+                WHERE time_start > 0 AND time_end > 0
+            ) sub
             GROUP BY mem_type
         """)
-        for row in cur:
-            out(f"  {row[0]:>25}: {row[1]:>10} jobs")
+        rows = list(cur)
+        total = sum(r[1] for r in rows)
+        out(f"  {'Memory type':>30}  {'Count':>12}  {'%':>8}")
+        for mem_type, cnt in rows:
+            pct = (cnt / total * 100) if total else 0
+            out(f"  {mem_type:>30}  {cnt:>12}  {pct:>7.2f}%")
+        out()
+        out(f"  Total: {total:>12}")
     except Exception as e:
         out(f"Error checking flag bit: {e}")
 
@@ -283,8 +316,24 @@ with open(OUTPUT_FILE, 'w') as f:
     # =========================================================================
     out()
     out("=" * 80)
-    out("PART 3: mem_req vs tres_req memory for --mem-per-cpu jobs")
+    out("PART 3: mem_req vs tres_req memory — comparing column with TRES string")
     out("=" * 80)
+    out()
+    out("Columns (all from create_job_table):")
+    out("  - mem_req: bigint storing memory request (bit 63 = per-cpu flag, lower 63 bits = value in MB)")
+    out("  - tres_req: TRES-encoded string; TRES ID 2 = total requested memory in MB")
+    out()
+    out("Expected relationship:")
+    out("  - --mem-per-cpu jobs: (mem_req value) × cpus_req = tres_req memory")
+    out("  - --mem (per-node) jobs: mem_req value = tres_req memory directly")
+
+    # -------------------------------------------------------------------------
+    # Part 3a: --mem-per-cpu jobs
+    # -------------------------------------------------------------------------
+    out()
+    out("-" * 40)
+    out("Part 3a: --mem-per-cpu jobs (bit 63 set)")
+    out("-" * 40)
 
     # Sample --mem-per-cpu jobs (flag bit set) with multi-CPU
     try:
@@ -310,18 +359,19 @@ with open(OUTPUT_FILE, 'w') as f:
             LIMIT 15
         """)
         out()
-        out("--mem-per-cpu jobs with cpus_req > 1:")
-        out(f"  {'id_job':>10}  {'cpus':>5}  {'mem_req_raw':>12}  {'mem_value':>12}  {'tres_mem':>10}  {'tres_mem/cpus':>14}  tres_req")
+        out("Sample --mem-per-cpu jobs with cpus_req > 1:")
+        out(f"  {'id_job':>10}  {'cpus_req':>8}  {'mem_req':>20}  {'mem_value':>12}  {'tres_req':>10}  {'tres/cpus':>10}  tres_req (string)")
+        out(f"  {'':>10}  {'(column)':>8}  {'(column, raw)':>20}  {'(lower 63b)':>12}  {'(TRES ID 2)':>10}  {'':>10}")
         for row in cur:
             id_job, cpus, mem_req_raw, is_per_cpu, mem_value, tres_req, tres_mem = row
             tres_per_cpu = tres_mem // cpus if cpus > 0 and tres_mem else 0
-            out(f"  {id_job:>10}  {cpus:>5}  {mem_req_raw:>12}  {mem_value:>12}  {tres_mem:>10}  {tres_per_cpu:>14}  {tres_req}")
+            out(f"  {id_job:>10}  {cpus:>8}  {mem_req_raw:>20}  {mem_value:>12}  {tres_mem:>10}  {tres_per_cpu:>10}  {tres_req}")
     except Exception as e:
         out(f"Error: {e}")
 
     # Verify: for --mem-per-cpu jobs, does mem_value × cpus_req = tres_mem?
     out()
-    out("Verification: for --mem-per-cpu jobs, does (mem_value × cpus_req) = tres_mem?")
+    out("Verification: for --mem-per-cpu jobs, does (mem_value × cpus_req) = tres_req memory?")
     try:
         cur.execute("""
             SELECT
@@ -345,10 +395,12 @@ with open(OUTPUT_FILE, 'w') as f:
               AND j.mem_req & 0x8000000000000000 != 0
         """)
         row = cur.fetchone()
-        out(f"  --mem-per-cpu jobs: total={row[0]}, match={row[1]}, differ={row[2]}")
-        if row[0] > 0:
-            match_pct = (row[1] / row[0]) * 100 if row[0] else 0
-            out(f"  Match rate: {match_pct:.1f}%")
+        total, match, differ = row
+        match_pct = (match / total * 100) if total else 0
+        differ_pct = (differ / total * 100) if total else 0
+        out(f"  Total --mem-per-cpu jobs:  {total:>12}")
+        out(f"  Match (formula holds):     {match:>12}  ({match_pct:>6.2f}%)")
+        out(f"  Differ (formula fails):    {differ:>12}  ({differ_pct:>6.2f}%)")
     except Exception as e:
         out(f"Error: {e}")
 
@@ -374,18 +426,25 @@ with open(OUTPUT_FILE, 'w') as f:
             LIMIT 10
         """)
         out()
-        out("Sample --mem-per-cpu jobs (showing mem_value × cpus = calculated vs tres_mem):")
-        out(f"  {'id_job':>10}  {'cpus':>5}  {'mem_value':>10}  {'calculated':>12}  {'tres_mem':>10}  {'match?':>7}")
+        out("Sample --mem-per-cpu jobs (showing mem_value × cpus = calculated vs tres_req memory):")
+        out(f"  {'id_job':>10}  {'cpus_req':>8}  {'mem_value':>10}  {'calculated':>12}  {'tres_req':>10}  {'match?':>7}")
+        out(f"  {'':>10}  {'(column)':>8}  {'(lower 63b)':>10}  {'(val×cpus)':>12}  {'(TRES ID 2)':>10}")
         for row in cur:
             id_job, cpus, mem_value, calculated, tres_mem, tres_req = row
             match = "YES" if calculated == tres_mem else "NO"
-            out(f"  {id_job:>10}  {cpus:>5}  {mem_value:>10}  {calculated:>12}  {tres_mem:>10}  {match:>7}")
+            out(f"  {id_job:>10}  {cpus:>8}  {mem_value:>10}  {calculated:>12}  {tres_mem:>10}  {match:>7}")
     except Exception as e:
         out(f"Error: {e}")
 
-    # Same for --mem (per-node) jobs for comparison
+    # -------------------------------------------------------------------------
+    # Part 3b: --mem (per-node) jobs
+    # -------------------------------------------------------------------------
     out()
-    out("For --mem (per-node) jobs, mem_value should equal tres_mem directly:")
+    out("-" * 40)
+    out("Part 3b: --mem (per-node) jobs (bit 63 not set)")
+    out("-" * 40)
+    out()
+    out("For --mem (per-node) jobs, mem_value should equal tres_req memory directly:")
     try:
         cur.execute("""
             SELECT
@@ -410,10 +469,12 @@ with open(OUTPUT_FILE, 'w') as f:
               AND j.mem_req > 0
         """)
         row = cur.fetchone()
-        out(f"  --mem (per-node) jobs: total={row[0]}, match={row[1]}, differ={row[2]}")
-        if row[0] > 0:
-            match_pct = (row[1] / row[0]) * 100 if row[0] else 0
-            out(f"  Match rate: {match_pct:.1f}%")
+        total, match, differ = row
+        match_pct = (match / total * 100) if total else 0
+        differ_pct = (differ / total * 100) if total else 0
+        out(f"  Total --mem (per-node) jobs:  {total:>12}")
+        out(f"  Match (mem_value = tres):     {match:>12}  ({match_pct:>6.2f}%)")
+        out(f"  Differ:                       {differ:>12}  ({differ_pct:>6.2f}%)")
     except Exception as e:
         out(f"Error: {e}")
 
@@ -440,11 +501,12 @@ with open(OUTPUT_FILE, 'w') as f:
         """)
         out()
         out("Sample --mem (per-node) jobs:")
-        out(f"  {'id_job':>10}  {'cpus':>5}  {'mem_value':>12}  {'tres_mem':>10}  {'match?':>8}")
+        out(f"  {'id_job':>10}  {'cpus_req':>8}  {'mem_value':>12}  {'tres_req':>10}  {'match?':>8}")
+        out(f"  {'':>10}  {'(column)':>8}  {'(lower 63b)':>12}  {'(TRES ID 2)':>10}")
         for row in cur:
             id_job, cpus, mem_value, tres_mem, tres_req = row
             match = "YES" if mem_value == tres_mem else "NO"
-            out(f"  {id_job:>10}  {cpus:>5}  {mem_value:>12}  {tres_mem:>10}  {match:>8}")
+            out(f"  {id_job:>10}  {cpus:>8}  {mem_value:>12}  {tres_mem:>10}  {match:>8}")
     except Exception as e:
         out(f"Error: {e}")
 
@@ -453,8 +515,15 @@ with open(OUTPUT_FILE, 'w') as f:
     # =========================================================================
     out()
     out("=" * 80)
-    out("PART 4: Jobs with apparent memory efficiency > 100% — which mem type?")
+    out("PART 4: Jobs with apparent memory efficiency > 100% — breakdown by mem type")
     out("=" * 80)
+    out()
+    out("Data sources:")
+    out("  - tres_req (TRES ID 2) from create_job_table: requested memory in MB")
+    out("  - tres_usage_in_max (TRES ID 2) from create_step_table: peak memory usage in bytes")
+    out("  - mem_req (bit 63) from create_job_table: distinguishes --mem vs --mem-per-cpu")
+    out()
+    out("Memory efficiency = (maxrss bytes) / (tres_req MB × 1024²) × 100%")
 
     try:
         cur.execute("""
@@ -489,13 +558,14 @@ with open(OUTPUT_FILE, 'w') as f:
             LIMIT 20
         """)
         out()
-        out("Completed jobs where maxrss > tres_req_mem * 1M (apparent mem eff > 100%):")
-        out(f"  {'id_job':>10}  {'cpus':>5}  {'mem_type':>8}  {'mem_val':>10}  {'tres_mem':>10}  {'maxrss':>15}  {'eff%':>8}")
+        out("Sample completed jobs where maxrss > tres_req × 1M (mem eff > 100%):")
+        out(f"  {'id_job':>10}  {'cpus_req':>8}  {'mem_type':>10}  {'mem_value':>10}  {'tres_req':>10}  {'maxrss':>15}  {'eff%':>8}")
+        out(f"  {'':>10}  {'(column)':>8}  {'(bit 63)':>10}  {'(lower 63b)':>10}  {'(TRES ID 2)':>10}  {'(step TRES)':>15}")
         for row in cur:
             id_job, cpus, mem_req, mem_type, mem_value, tres_mem, maxrss = row
             reqmem_bytes = tres_mem * 1024 * 1024
             eff = (maxrss / reqmem_bytes * 100) if reqmem_bytes > 0 else 0
-            out(f"  {id_job:>10}  {cpus:>5}  {mem_type:>8}  {mem_value:>10}  {tres_mem:>10}  {maxrss:>15}  {eff:>7.1f}%")
+            out(f"  {id_job:>10}  {cpus:>8}  {mem_type:>10}  {mem_value:>10}  {tres_mem:>10}  {maxrss:>15}  {eff:>7.1f}%")
     except Exception as e:
         out(f"Error: {e}")
 
@@ -530,8 +600,14 @@ with open(OUTPUT_FILE, 'w') as f:
         """)
         out()
         out("Breakdown of mem eff > 100% jobs by memory request type:")
-        for row in cur:
-            out(f"  {row[0]:>10}: {row[1]:>8} jobs")
+        rows = list(cur)
+        total = sum(r[1] for r in rows)
+        out(f"  {'Memory type':>15}  {'Count':>12}  {'%':>8}")
+        for mem_type, cnt in rows:
+            pct = (cnt / total * 100) if total else 0
+            out(f"  {mem_type:>15}  {cnt:>12}  {pct:>7.2f}%")
+        out()
+        out(f"  Total: {total:>12}")
     except Exception as e:
         out(f"Error in breakdown query: {e}")
 
