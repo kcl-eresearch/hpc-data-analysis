@@ -2,6 +2,18 @@
 
 Analyses HPC cluster usage by faculty, with a focus on resource efficiency (CPU, memory, time). Queries the Slurm accounting database (MySQL) directly and maps users to faculties via LDAP.
 
+## Documentation
+
+- **For analysts** interpreting results: see [`docs/analysis/`](docs/analysis/index.md)
+  - How efficiency metrics are calculated
+  - What good/bad efficiency looks like
+  - Known limitations and caveats
+
+- **For developers** working on the codebase: see [`docs/development/`](docs/development/index.md)
+  - Slurm database schema
+  - CPU and memory accounting details
+  - Dev scripts guide
+
 ## Structure
 
 ```
@@ -12,6 +24,9 @@ hpc-data-analysis/
 │       ├── slurm_utils.py          # Shared utilities: MySQL, LDAP, TRES parsing
 │       ├── aggregate_stats.py      # Aggregate statistics per faculty (→ CSV)
 │       └── job_stats.py            # Per-job efficiency metrics (→ CSV)
+├── docs/
+│   ├── analysis/                   # Documentation for analysts
+│   └── development/                # Documentation for developers
 ├── notebooks/
 │   └── visualisation.ipynb         # Jupyter notebook with all plots and documentation
 ├── dev_scripts/                    # Diagnostic queries and their output

@@ -1,5 +1,25 @@
 #!/usr/bin/env python3
-"""Debug memory values for a few specific jobs."""
+"""Investigate memory unit encoding in Slurm's TRES fields.
+
+This script helps determine the units used for memory values in different fields:
+- tres_req (TRES ID 2): Requested memory - stored in MB
+- tres_usage_in_max (TRES ID 2): Actual peak memory - stored in BYTES
+
+The script samples a few jobs and calculates memory efficiency under different
+unit assumptions to verify which interpretation is correct:
+- If maxrss is in bytes and reqmem is in MB: efficiency = maxrss / (reqmem * 1024²)
+- If both are in same units: efficiency = maxrss / reqmem
+
+Typical finding: tres_req memory is in MB, tres_usage_in_max memory is in bytes.
+This means memory efficiency should be calculated as:
+  mem_eff = (maxrss_bytes) / (reqmem_MB * 1024 * 1024) * 100%
+
+Data sources:
+- create_job_table: tres_req (TRES ID 2 = requested memory in MB)
+- create_step_table: tres_usage_in_max (TRES ID 2 = peak memory in bytes)
+
+Saves output to output_memory.txt
+"""
 
 import sys
 from pathlib import Path

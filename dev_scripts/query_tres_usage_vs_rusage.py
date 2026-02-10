@@ -1,10 +1,34 @@
 #!/usr/bin/env python3
-"""
-Diagnostic script to investigate the relationship between:
-- user_sec/sys_sec columns (from getrusage/wait4)
-- tres_usage_in_max field (from cgroup accounting)
+"""Investigate the relationship between rusage and TRES CPU accounting.
 
-Goal: Understand units and when each is populated.
+Slurm has two sources of CPU time data:
+1. user_sec/sys_sec columns: From getrusage/wait4 system calls (local process only)
+2. tres_usage_in_max (TRES ID 1): From cgroup accounting (can include remote nodes)
+
+This matters for multi-node jobs where the batch script runs on the head node
+but srun steps execute on remote nodes. The rusage data only captures local
+CPU time, while TRES data may capture distributed usage.
+
+Tests performed:
+1. Compare user_sec+sys_sec vs tres_usage_in_max CPU for batch steps
+   (to determine TRES CPU units - should be ~1:1 ratio if both in seconds)
+2. Find steps where rusage=0 but TRES has data (distributed/remote steps)
+3. Count steps by data source availability (rusage only, TRES only, both, neither)
+4. Compare single-node vs multi-node jobs (do they differ in data availability?)
+5. For jobs with both batch and regular steps, compare CPU totals
+   (is batch CPU additional overhead or duplicate counting?)
+
+Key findings:
+- TRES CPU values are in CPU-seconds (same unit as rusage)
+- Regular srun steps often have rusage=0 but TRES data (distributed execution)
+- Batch steps usually have both rusage and TRES data
+- For accurate CPU efficiency, sum regular steps if available, else use batch
+
+Data sources:
+- create_step_table: user_sec, sys_sec, user_usec, sys_usec, tres_usage_in_max
+- create_job_table: nodes_alloc, cpus_req
+
+Saves output to output_tres_usage_vs_rusage.txt
 """
 
 import sys

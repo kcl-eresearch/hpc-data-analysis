@@ -6,6 +6,10 @@ config.yaml
 results/
 original_code/
 
+# Documentation (draft - to review before making public)
+docs/development/
+docs/analysis/
+
 # Lock files
 .~lock.*
 

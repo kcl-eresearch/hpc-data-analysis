@@ -3,6 +3,7 @@
 
 Tests:
 1.  Does allocated CPUs differ from requested CPUs? (Could explain CPU eff > 100%)
+    Also reports single-CPU vs multi-CPU job breakdown.
 1b. Does cpus_req column match the CPU value in tres_req? (Verify column vs TRES string consistency)
 2.  Does mem_req encode --mem vs --mem-per-cpu via flag bit?
 3.  Does tres_req memory match mem_req for both --mem and --mem-per-cpu jobs?
@@ -44,10 +45,10 @@ with open(OUTPUT_FILE, 'w') as f:
         print(text, file=f)
 
     # =========================================================================
-    # Part 1: cpus_req vs tres_alloc CPU (requested vs allocated CPUs)
+    # Part 1: CPU requests — requested vs allocated, single vs multi-CPU
     # =========================================================================
     out("=" * 80)
-    out("PART 1: cpus_req vs tres_alloc CPU — requested vs allocated CPUs")
+    out("PART 1: CPU requests — requested vs allocated, single vs multi-CPU")
     out("=" * 80)
     out()
     out("Columns (all from create_job_table):")
@@ -91,7 +92,7 @@ with open(OUTPUT_FILE, 'w') as f:
     except Exception as e:
         out(f"Error comparing: {e}")
 
-    # Count jobs where they differ
+    # Count jobs where they differ + single vs multi-CPU breakdown
     try:
         cur.execute("""
             SELECT
@@ -107,19 +108,27 @@ with open(OUTPUT_FILE, 'w') as f:
                         SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
                         ',', 1
                     ) AS UNSIGNED
-                ) THEN 1 ELSE 0 END) as differ_count
+                ) THEN 1 ELSE 0 END) as differ_count,
+                SUM(CASE WHEN j.cpus_req = 1 THEN 1 ELSE 0 END) as single_cpu,
+                SUM(CASE WHEN j.cpus_req > 1 THEN 1 ELSE 0 END) as multi_cpu
             FROM create_job_table j
             WHERE j.time_start > 0 AND j.time_end > 0
         """)
         row = cur.fetchone()
-        total, equal, differ = row
+        total, equal, differ, single_cpu, multi_cpu = row
         equal_pct = (equal / total * 100) if total else 0
         differ_pct = (differ / total * 100) if total else 0
+        single_pct = (single_cpu / total * 100) if total else 0
+        multi_pct = (multi_cpu / total * 100) if total else 0
         out()
-        out(f"Summary:")
+        out(f"Summary (cpus_req vs tres_alloc):")
         out(f"  Total jobs:  {total:>12}")
         out(f"  Equal:       {equal:>12}  ({equal_pct:>6.2f}%)")
         out(f"  Differ:      {differ:>12}  ({differ_pct:>6.2f}%)")
+        out()
+        out(f"Summary (single vs multi-CPU jobs):")
+        out(f"  Single-CPU (cpus_req = 1):  {single_cpu:>12}  ({single_pct:>6.2f}%)")
+        out(f"  Multi-CPU (cpus_req > 1):   {multi_cpu:>12}  ({multi_pct:>6.2f}%)")
     except Exception as e:
         out(f"Error counting: {e}")
 

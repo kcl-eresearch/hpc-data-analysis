@@ -1,3 +1,30 @@
+#!/usr/bin/env python3
+"""Generate basic job statistics aggregated by faculty.
+
+This is an early/legacy version of faculty statistics. For the production version
+with proper efficiency calculations, use the main CLI tools:
+- hpc-aggregate-stats: Faculty-level aggregated statistics with efficiency metrics
+- hpc-job-stats: Per-job metrics for detailed analysis
+
+This script:
+1. Queries all jobs from a date range (Jan 2025)
+2. Looks up each user's faculty via LDAP (using the 'st' attribute)
+3. Aggregates basic counts by faculty: job_count, elapsed time, CPUs, memory, nodes
+
+Output: CSV with faculty-level totals (no efficiency calculations)
+
+Requirements:
+- MySQL access to Slurm accounting database (config.yaml)
+- LDAP access to Active Directory (/etc/hpc_export_stats.yaml)
+
+Data sources:
+- create_job_table: job records (cpus_req, mem_req, timestamps, nodes_alloc)
+- create_assoc_table: username lookup (via id_assoc)
+- LDAP: faculty lookup (via 'st' attribute)
+
+Saves output to output_faculty_stats.csv
+"""
+
 from pathlib import Path
 import mysql.connector
 import ldap

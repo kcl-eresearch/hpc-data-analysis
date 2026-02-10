@@ -1,5 +1,15 @@
 #!/usr/bin/env python3
-"""Query table_defs_table to see if it contains schema definitions."""
+"""Query Slurm's internal table_defs_table for schema definitions.
+
+Slurm stores its own table definitions in a special table called table_defs_table.
+This contains the CREATE TABLE statements used by Slurm, which can be useful for
+understanding the intended schema and any constraints.
+
+This is complementary to dump_schema.py - that script shows what MySQL reports
+about the schema, while this shows what Slurm internally defines.
+
+Saves output to output_table_defs.txt
+"""
 
 import sys
 from pathlib import Path

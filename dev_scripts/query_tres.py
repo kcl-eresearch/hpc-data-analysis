@@ -1,5 +1,32 @@
 #!/usr/bin/env python3
-"""Query TRES table and sample all TRES-related variables from job and step tables."""
+"""Explore TRES (Trackable RESources) encoding in the Slurm database.
+
+TRES is Slurm's system for tracking multiple resource types. Resources are encoded
+as comma-separated "id=value" pairs in string columns like tres_req, tres_alloc,
+and tres_usage_in_max.
+
+This script shows:
+1. The TRES ID mappings from tres_table (what each ID means)
+2. Sample tres_req/tres_alloc values from create_job_table (job-level)
+3. Sample tres_usage_* values from create_step_table (step-level)
+
+Common TRES IDs (from tres_table):
+- 1: CPU count
+- 2: Memory in MB
+- 3: Energy
+- 4: Node count
+- 5: Billing
+- 1001+: GRES (GPUs, etc.)
+
+Example TRES string: "1=8,2=16000,4=1" means 8 CPUs, 16000 MB memory, 1 node.
+
+Data sources:
+- tres_table: TRES ID to type/name mappings
+- create_job_table: tres_req (requested), tres_alloc (allocated)
+- create_step_table: tres_usage_in_max/ave/tot/min (actual usage)
+
+Saves output to output_tres.txt
+"""
 
 import sys
 from pathlib import Path

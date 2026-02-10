@@ -1,5 +1,22 @@
 #!/usr/bin/env python3
-"""Dump the MySQL Slurm database schema (tables and columns)."""
+"""Dump the MySQL Slurm database schema (tables and columns).
+
+This is a basic exploration script to see what tables and columns exist in the
+Slurm accounting database. Useful as a starting point for understanding the
+database structure.
+
+Output:
+- List of all tables in the database
+- For each table: all column names and their data types
+
+Key tables for job accounting:
+- create_job_table: job-level records
+- create_step_table: step-level records (linked via job_db_inx)
+- create_assoc_table: user/account associations
+- tres_table: TRES ID to resource type mappings
+
+Saves output to output_schema.txt
+"""
 
 import sys
 from pathlib import Path

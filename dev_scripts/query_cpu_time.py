@@ -1,9 +1,21 @@
 #!/usr/bin/env python3
-"""Sample CPU time variables from create_step_table.
+"""Explore CPU time accounting in create_step_table.
 
-CPU time is stored directly in columns (not TRES-encoded):
-- user_sec, user_usec: user-space CPU time
-- sys_sec, sys_usec: kernel/system CPU time
+Unlike memory (which uses TRES encoding), CPU time is stored in direct columns
+from the rusage/getrusage system call:
+- user_sec, user_usec: CPU time spent in user space (application code)
+- sys_sec, sys_usec: CPU time spent in kernel space (system calls)
+
+The _usec fields provide microsecond precision. Total CPU time is:
+  total_cpu = user_sec + sys_sec + (user_usec + sys_usec) / 1,000,000
+
+Note: These values come from the batch script's perspective. For multi-node jobs,
+this only captures CPU time on the head node. Distributed step CPU time may be
+in tres_usage_in_max instead (see query_tres_usage_vs_rusage.py).
+
+Data source: create_step_table (user_sec, user_usec, sys_sec, sys_usec)
+
+Saves output to output_cpu_time.txt
 """
 
 import sys

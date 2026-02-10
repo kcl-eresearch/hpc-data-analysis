@@ -30,12 +30,13 @@ def output_csv(jobs, outfile, include_faculty=False):
     if include_faculty:
         headers.append("faculty")
     headers.extend([
+        "submission_type", "step_count",
         "state", "exit_code", "is_success",
         "elapsed_sec", "wait_sec", "timelimit_sec",
         "cpu_eff_pct", "mem_eff_pct", "time_eff_pct",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
         "maxrss_bytes", "reqmem_bytes",
-        "reqcpus", "nodes"
+        "req_cpus", "alloc_cpus", "nodes"
     ])
 
     print(",".join(headers), file=outfile)
@@ -48,6 +49,8 @@ def output_csv(jobs, outfile, include_faculty=False):
         if include_faculty:
             row.append(f'"{job.get("faculty", "unknown")}"')
         row.extend([
+            job.get("submission_type", "unknown"),
+            str(job.get("step_count", 0)),
             str(job["state"]),
             str(job["exit_code"]),
             "1" if job["is_success"] else "0",
@@ -64,6 +67,7 @@ def output_csv(jobs, outfile, include_faculty=False):
             format_value(job["maxrss"]),
             format_value(job["reqmem"]),
             str(job["req_cpus"]),
+            str(job.get("alloc_cpus", job["req_cpus"])),
             str(job["nodes_alloc"]),
         ])
         print(",".join(row), file=outfile)
