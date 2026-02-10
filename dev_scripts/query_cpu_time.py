@@ -6,10 +6,18 @@ CPU time is stored directly in columns (not TRES-encoded):
 - sys_sec, sys_usec: kernel/system CPU time
 """
 
+import sys
+from pathlib import Path
 import mysql.connector
 import yaml
 
-with open("config.yaml", "r") as f:
+# Paths relative to script location (allows running from any directory)
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+CONFIG_FILE = PROJECT_ROOT / "config.yaml"
+OUTPUT_FILE = SCRIPT_DIR / "output_cpu_time.txt"
+
+with open(CONFIG_FILE, "r") as f:
     config = yaml.safe_load(f)
 mysql_conf = config["mysql"]
 conn = mysql.connector.connect(
@@ -20,39 +28,45 @@ conn = mysql.connector.connect(
 )
 cursor = conn.cursor()
 
-print("=" * 80)
-print("CPU TIME VARIABLES IN create_step_table")
-print("=" * 80)
-print("Columns: user_sec, user_usec, sys_sec, sys_usec")
-print("  - user_sec/usec: CPU time spent in user space")
-print("  - sys_sec/usec: CPU time spent in kernel/system calls")
-print("  - Total CPU time = user_sec + sys_sec + (user_usec + sys_usec) / 1,000,000")
-print()
+with open(OUTPUT_FILE, 'w') as f:
+    def out(text=""):
+        print(text)
+        print(text, file=f)
 
-cursor.execute("""
-    SELECT
-        job_db_inx,
-        id_step,
-        step_name,
-        user_sec,
-        user_usec,
-        sys_sec,
-        sys_usec
-    FROM create_step_table
-    WHERE user_sec > 0 OR sys_sec > 0
-    ORDER BY job_db_inx DESC
-    LIMIT 10
-""")
+    out("=" * 80)
+    out("CPU TIME VARIABLES IN create_step_table")
+    out("=" * 80)
+    out("Columns: user_sec, user_usec, sys_sec, sys_usec")
+    out("  - user_sec/usec: CPU time spent in user space")
+    out("  - sys_sec/usec: CPU time spent in kernel/system calls")
+    out("  - Total CPU time = user_sec + sys_sec + (user_usec + sys_usec) / 1,000,000")
+    out()
 
-print("Sample steps (10 most recent with CPU time > 0):")
-print()
-print(f"  {'job_db_inx':>12}  {'id_step':>8}  {'step_name':>12}  {'user_sec':>10}  {'user_usec':>10}  {'sys_sec':>10}  {'sys_usec':>10}  {'total_cpu':>12}")
-print(f"  {'-'*12}  {'-'*8}  {'-'*12}  {'-'*10}  {'-'*10}  {'-'*10}  {'-'*10}  {'-'*12}")
+    cursor.execute("""
+        SELECT
+            job_db_inx,
+            id_step,
+            step_name,
+            user_sec,
+            user_usec,
+            sys_sec,
+            sys_usec
+        FROM create_step_table
+        WHERE user_sec > 0 OR sys_sec > 0
+        ORDER BY job_db_inx DESC
+        LIMIT 10
+    """)
 
-for row in cursor:
-    job_db_inx, id_step, step_name, user_sec, user_usec, sys_sec, sys_usec = row
-    total_cpu = user_sec + sys_sec + (user_usec + sys_usec) / 1_000_000
-    print(f"  {job_db_inx:>12}  {id_step:>8}  {str(step_name):>12}  {user_sec:>10}  {user_usec:>10}  {sys_sec:>10}  {sys_usec:>10}  {total_cpu:>12.2f}")
+    out("Sample steps (10 most recent with CPU time > 0):")
+    out()
+    out(f"  {'job_db_inx':>12}  {'id_step':>8}  {'step_name':>12}  {'user_sec':>10}  {'user_usec':>10}  {'sys_sec':>10}  {'sys_usec':>10}  {'total_cpu':>12}")
+    out(f"  {'-'*12}  {'-'*8}  {'-'*12}  {'-'*10}  {'-'*10}  {'-'*10}  {'-'*10}  {'-'*12}")
+
+    for row in cursor:
+        job_db_inx, id_step, step_name, user_sec, user_usec, sys_sec, sys_usec = row
+        total_cpu = user_sec + sys_sec + (user_usec + sys_usec) / 1_000_000
+        out(f"  {job_db_inx:>12}  {id_step:>8}  {str(step_name):>12}  {user_sec:>10}  {user_usec:>10}  {sys_sec:>10}  {sys_usec:>10}  {total_cpu:>12.2f}")
 
 cursor.close()
 conn.close()
+print(f"\nOutput saved to {OUTPUT_FILE}", file=sys.stderr)

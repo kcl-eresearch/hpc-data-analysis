@@ -1,8 +1,15 @@
+from pathlib import Path
 import mysql.connector
 import ldap
 from ldap import filter as ldap_filter
 import yaml
 import sys
+
+# Paths relative to script location (allows running from any directory)
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+CONFIG_FILE = PROJECT_ROOT / "config.yaml"
+OUTPUT_FILE = SCRIPT_DIR / "output_faculty_stats.csv"
 
 # Config
 START_DATE = '2025-01-01'
@@ -14,7 +21,7 @@ with open("/etc/hpc_export_stats.yaml", "r") as f:
 
 # Connect to MySQL
 print("Connecting to MySQL...", file=sys.stderr)
-with open("config.yaml", "r") as f:
+with open(CONFIG_FILE, "r") as f:
     config = yaml.safe_load(f)
 mysql_conf = config["mysql"]
 conn = mysql.connector.connect(
@@ -58,7 +65,7 @@ def get_faculty(username):
 # Get jobs with usernames - fix the elapsed time calculation
 print("Querying jobs...", file=sys.stderr)
 cursor.execute(f"""
-    SELECT a.user, j.cpus_req, j.mem_req, 
+    SELECT a.user, j.cpus_req, j.mem_req,
            j.time_start, j.time_end,
            j.nodes_alloc, j.state
     FROM create_job_table j
@@ -105,12 +112,14 @@ conn.close()
 
 print(f"Processed {total_jobs} jobs from {len(users_seen)} users", file=sys.stderr)
 
-# Output CSV
-print("faculty,job_count,total_elapsed_seconds,total_cpus_requested,total_mem_bytes,total_nodes")
-for faculty, s in sorted(stats.items(), key=lambda x: -x[1]["job_count"]):
-    print(f'"{faculty}",{s["job_count"]},{s["total_elapsed"]},{s["total_cpus"]},{s["total_mem"]},{s["total_nodes"]}')
-                                                                                                                                                                      108,1         Bot
+# Output CSV to both stdout and file
+with open(OUTPUT_FILE, 'w') as f:
+    def out(text):
+        print(text)
+        print(text, file=f)
 
+    out("faculty,job_count,total_elapsed_seconds,total_cpus_requested,total_mem_bytes,total_nodes")
+    for faculty, s in sorted(stats.items(), key=lambda x: -x[1]["job_count"]):
+        out(f'"{faculty}",{s["job_count"]},{s["total_elapsed"]},{s["total_cpus"]},{s["total_mem"]},{s["total_nodes"]}')
 
-
-
+print(f"\nOutput saved to {OUTPUT_FILE}", file=sys.stderr)

@@ -17,12 +17,17 @@ Saves output to output_cpu_mem_diagnostics.txt
 """
 
 import sys
+from pathlib import Path
 import mysql.connector
 import yaml
 
-OUTPUT_FILE = "output_cpu_mem_diagnostics.txt"
+# Paths relative to script location (allows running from any directory)
+SCRIPT_DIR = Path(__file__).parent
+PROJECT_ROOT = SCRIPT_DIR.parent
+CONFIG_FILE = PROJECT_ROOT / "config.yaml"
+OUTPUT_FILE = SCRIPT_DIR / "output_cpu_mem_diagnostics.txt"
 
-with open("config.yaml", "r") as f:
+with open(CONFIG_FILE, "r") as f:
     config = yaml.safe_load(f)
 mysql_conf = config["mysql"]
 conn = mysql.connector.connect(
