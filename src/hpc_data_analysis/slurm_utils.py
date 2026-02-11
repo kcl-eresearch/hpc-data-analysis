@@ -273,13 +273,13 @@ def calculate_job_metrics(row):
         dict with calculated metrics:
         - id_job, username, state, exit_code
         - time_submit, time_start, time_end
-        - elapsed, wait_time, timelimit_sec
-        - total_user, total_sys, total_cpu (all in seconds, including usec)
-        - req_cpus, alloc_cpus, maxrss, reqmem (in bytes)
-        - cpu_eff, mem_eff, time_eff (percentages or None)
-        - cpu_requested (elapsed * req_cpus)
+        - elapsed_sec, wait_sec, timelimit_sec
+        - user_cpu_sec, sys_cpu_sec, total_cpu_sec (all in seconds, including usec)
+        - req_cpus, alloc_cpus, maxrss_bytes, reqmem_bytes
+        - cpu_eff_req (based on req_cpus), cpu_eff_alloc (based on alloc_cpus)
+        - mem_eff_pct, time_eff_pct (percentages or None)
         - user_cpu_pct (percentage or None)
-        - nodes_alloc, step_count
+        - n_nodes, step_count
         - is_success (bool)
         - submission_type ('batch', 'interactive', or 'unknown')
     """
@@ -323,7 +323,9 @@ def calculate_job_metrics(row):
 
     # Per-job efficiencies
     cpu_requested = elapsed * req_cpus
-    cpu_eff = (total_cpu / cpu_requested * 100) if cpu_requested > 0 else None
+    cpu_allocated = elapsed * alloc_cpus
+    cpu_eff_req = (total_cpu / cpu_requested * 100) if cpu_requested > 0 else None
+    cpu_eff_alloc = (total_cpu / cpu_allocated * 100) if cpu_allocated > 0 else None
     mem_eff = (maxrss / reqmem * 100) if reqmem > 0 else None
     time_eff = (elapsed / timelimit_sec * 100) if timelimit_sec > 0 else None
 
@@ -341,22 +343,23 @@ def calculate_job_metrics(row):
         "time_submit": time_submit,
         "time_start": time_start,
         "time_end": time_end,
-        "elapsed": elapsed,
-        "wait_time": wait_time,
+        "elapsed_sec": elapsed,
+        "wait_sec": wait_time,
         "timelimit_sec": timelimit_sec,
-        "total_user": total_user,
-        "total_sys": total_sys,
-        "total_cpu": total_cpu,
+        "user_cpu_sec": total_user,
+        "sys_cpu_sec": total_sys,
+        "total_cpu_sec": total_cpu,
         "req_cpus": req_cpus,
         "alloc_cpus": alloc_cpus,
-        "maxrss": maxrss,
-        "reqmem": reqmem,
+        "maxrss_bytes": maxrss,
+        "reqmem_bytes": reqmem,
         "cpu_requested": cpu_requested,
-        "cpu_eff": cpu_eff,
-        "mem_eff": mem_eff,
-        "time_eff": time_eff,
+        "cpu_eff_req": cpu_eff_req,
+        "cpu_eff_alloc": cpu_eff_alloc,
+        "mem_eff_pct": mem_eff,
+        "time_eff_pct": time_eff,
         "user_cpu_pct": user_cpu_pct,
-        "nodes_alloc": nodes_alloc,
+        "n_nodes": nodes_alloc,
         "step_count": step_count,
         "is_success": is_success,
         "submission_type": submission_type,

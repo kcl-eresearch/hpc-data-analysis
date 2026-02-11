@@ -33,10 +33,10 @@ def output_csv(jobs, outfile, include_faculty=False):
         "submission_type", "step_count",
         "state", "exit_code", "is_success",
         "elapsed_sec", "wait_sec", "timelimit_sec",
-        "cpu_eff_pct", "mem_eff_pct", "time_eff_pct",
+        "cpu_eff_req", "cpu_eff_alloc", "mem_eff_pct", "time_eff_pct",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
         "maxrss_bytes", "reqmem_bytes",
-        "req_cpus", "alloc_cpus", "nodes"
+        "req_cpus", "alloc_cpus", "n_nodes"
     ])
 
     print(",".join(headers), file=outfile)
@@ -54,21 +54,22 @@ def output_csv(jobs, outfile, include_faculty=False):
             str(job["state"]),
             str(job["exit_code"]),
             "1" if job["is_success"] else "0",
-            format_value(job["elapsed"]),
-            format_value(job["wait_time"]),
+            format_value(job["elapsed_sec"]),
+            format_value(job["wait_sec"]),
             format_value(job["timelimit_sec"]),
-            format_value(job["cpu_eff"]),
-            format_value(job["mem_eff"]),
-            format_value(job["time_eff"]),
-            format_value(job["total_cpu"]),
-            format_value(job["total_user"]),
-            format_value(job["total_sys"]),
+            format_value(job["cpu_eff_req"]),
+            format_value(job["cpu_eff_alloc"]),
+            format_value(job["mem_eff_pct"]),
+            format_value(job["time_eff_pct"]),
+            format_value(job["total_cpu_sec"]),
+            format_value(job["user_cpu_sec"]),
+            format_value(job["sys_cpu_sec"]),
             format_value(job["user_cpu_pct"]),
-            format_value(job["maxrss"]),
-            format_value(job["reqmem"]),
+            format_value(job["maxrss_bytes"]),
+            format_value(job["reqmem_bytes"]),
             str(job["req_cpus"]),
             str(job.get("alloc_cpus", job["req_cpus"])),
-            str(job["nodes_alloc"]),
+            str(job["n_nodes"]),
         ])
         print(",".join(row), file=outfile)
 

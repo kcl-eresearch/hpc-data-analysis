@@ -109,21 +109,21 @@ def update_stats(metrics, stats, collate_key):
     ec = metrics["exit_code"]
     s["exit_codes"][ec] = s["exit_codes"].get(ec, 0) + 1
 
-    s["total_elapsed"] += metrics["elapsed"]
-    s["total_cpu"] += metrics["total_cpu"]
-    s["total_user_cpu"] += metrics["total_user"]
-    s["total_sys_cpu"] += metrics["total_sys"]
-    s["total_maxrss"] += metrics["maxrss"]
-    s["total_reqmem"] += metrics["reqmem"]
+    s["total_elapsed"] += metrics["elapsed_sec"]
+    s["total_cpu"] += metrics["total_cpu_sec"]
+    s["total_user_cpu"] += metrics["user_cpu_sec"]
+    s["total_sys_cpu"] += metrics["sys_cpu_sec"]
+    s["total_maxrss"] += metrics["maxrss_bytes"]
+    s["total_reqmem"] += metrics["reqmem_bytes"]
     s["total_reqcpus"] += metrics["req_cpus"]
     s["total_timelimit"] += metrics["timelimit_sec"]
-    s["total_nodes"] += metrics["nodes_alloc"]
-    s["total_wait"] += metrics["wait_time"]
+    s["total_nodes"] += metrics["n_nodes"]
+    s["total_wait"] += metrics["wait_sec"]
     s["sum_cpu_requested"] += metrics["cpu_requested"]
 
-    cpu_eff = metrics["cpu_eff"]
-    mem_eff = metrics["mem_eff"]
-    time_eff = metrics["time_eff"]
+    cpu_eff = metrics["cpu_eff_req"]
+    mem_eff = metrics["mem_eff_pct"]
+    time_eff = metrics["time_eff_pct"]
 
     if cpu_eff is not None:
         s["sum_job_cpu_eff"] += cpu_eff
@@ -136,10 +136,10 @@ def update_stats(metrics, stats, collate_key):
         s["count_time_eff"] += 1
 
     if is_success:
-        s["success_total_elapsed"] += metrics["elapsed"]
-        s["success_total_cpu"] += metrics["total_cpu"]
-        s["success_total_maxrss"] += metrics["maxrss"]
-        s["success_total_reqmem"] += metrics["reqmem"]
+        s["success_total_elapsed"] += metrics["elapsed_sec"]
+        s["success_total_cpu"] += metrics["total_cpu_sec"]
+        s["success_total_maxrss"] += metrics["maxrss_bytes"]
+        s["success_total_reqmem"] += metrics["reqmem_bytes"]
         s["success_sum_cpu_requested"] += metrics["cpu_requested"]
         s["success_total_timelimit"] += metrics["timelimit_sec"]
         if cpu_eff is not None:
