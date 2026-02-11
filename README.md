@@ -28,7 +28,8 @@ hpc-data-analysis/
 │   ├── analysis/                   # Documentation for analysts
 │   └── development/                # Documentation for developers
 ├── notebooks/
-│   └── visualisation.ipynb         # Jupyter notebook with all plots and documentation
+│   ├── visualisation_users.ipynb          # User-focused: average efficiency metrics
+│   └── visualisation_infrastructure.ipynb # Infrastructure-focused: weighted efficiency metrics
 ├── dev_scripts/                    # Diagnostic queries and their output
 ├── results/                        # Generated CSV output (gitignored)
 ├── pyproject.toml                  # Package metadata and dependencies
@@ -83,29 +84,53 @@ mysql:
 
 ## Usage
 
+Run from the repository root directory.
+
 ### 1. Generate aggregate faculty statistics
 
 ```bash
-hpc-aggregate-stats --since 2025-01-01 --until 2025-02-01 \
+PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats \
+    --since 2025-01-01 --until 2025-02-01 \
     --collate_by st=faculty --output results/hpc_stats_output.csv
 ```
 
 ### 2. Generate per-job metrics
 
 ```bash
-hpc-job-stats --since 2025-01-01 --until 2025-02-01 \
+PYTHONPATH=src python3 -m hpc_data_analysis.job_stats \
+    --since 2025-01-01 --until 2025-02-01 \
     --output results/job_level_metrics.csv --include-faculty
 ```
 
-### 3. Run the notebook
+### 3. Run the notebooks
 
-Open `notebooks/visualisation.ipynb` in Jupyter. It reads the CSV files generated above. The notebook includes a Technical Appendix documenting the methodology, efficiency formulas, and open questions.
+Two notebooks are provided for different audiences:
+
+- **`notebooks/visualisation_users.ipynb`** — User-focused analysis using **average efficiency** (each job counts equally). Use this for user training, feedback sessions, and helping users understand typical job efficiency.
+
+- **`notebooks/visualisation_infrastructure.ipynb`** — Infrastructure-focused analysis using **weighted efficiency** (larger jobs contribute more). Use this for capacity planning, resource allocation decisions, and understanding overall cluster utilisation.
+
+Both notebooks read the CSV files generated above and include a Technical Appendix documenting the methodology.
 
 ## What it computes
 
-- **CPU efficiency**: total CPU time / (elapsed x requested CPUs). Can exceed 100% when programs spawn threads internally without Slurm knowing.
-- **Memory efficiency**: peak memory used / requested memory. Can exceed 100% if memory limits are not enforced on the cluster.
-- **Time efficiency**: elapsed wall-clock time / requested time limit.
-- **Weighted vs average**: weighted efficiency is dominated by large jobs (sum of used / sum of allocated); average efficiency treats each job equally.
+### Efficiency metrics
 
-See the Technical Appendix in the notebook for full details.
+- **CPU efficiency**: total CPU time / (elapsed × requested CPUs). Can exceed 100% if jobs use more threads than requested CPUs.
+- **Memory efficiency**: peak memory used / requested memory. Can exceed 100% if memory limits are not enforced.
+- **Time efficiency**: elapsed wall-clock time / requested time limit.
+
+### Weighted vs average efficiency
+
+| Metric | Formula | Best for |
+|--------|---------|----------|
+| **Weighted** | sum(used) / sum(allocated) × 100 | Infrastructure planning — larger jobs contribute more to the overall picture |
+| **Average** | mean(per-job efficiency) | User education — shows typical job efficiency, each job counts equally |
+
+### Job states
+
+- **Efficiency stats** include: COMPLETED, TIMEOUT, OUT_OF_MEMORY (jobs that ran and have meaningful resource usage)
+- **Success** = COMPLETED only
+- **Failed** = FAILED, TIMEOUT, NODE_FAIL, PREEMPTED, OUT_OF_MEMORY (not CANCELLED, which is intentional)
+
+See the Technical Appendix in the notebooks for full details.

@@ -46,6 +46,15 @@ INCLUDED_STATES = {
 # States considered "successful"
 SUCCESS_STATES = {JOB_STATE_COMPLETED}
 
+# States considered "failed" (excludes CANCELLED since that's intentional user action)
+FAILED_STATES = {
+    JOB_STATE_FAILED,
+    JOB_STATE_TIMEOUT,
+    JOB_STATE_NODE_FAIL,
+    JOB_STATE_PREEMPTED,
+    JOB_STATE_OUT_OF_MEMORY,
+}
+
 # Human-readable state names
 STATE_NAMES = {
     JOB_STATE_COMPLETED: "completed",
@@ -280,7 +289,7 @@ def calculate_job_metrics(row):
         - user_cpu_sec, sys_cpu_sec, total_cpu_sec (all in seconds, including usec)
         - req_cpus, alloc_cpus, maxrss_bytes, reqmem_bytes
         - cpu_eff_req (based on req_cpus), cpu_eff_alloc (based on alloc_cpus)
-        - mem_eff_pct, time_eff_pct (percentages or None)
+        - mem_eff, time_eff (percentages or None)
         - user_cpu_pct (percentage or None)
         - n_nodes, step_count, n_tasks
         - is_success (bool)
@@ -358,10 +367,11 @@ def calculate_job_metrics(row):
         "maxrss_bytes": maxrss,
         "reqmem_bytes": reqmem,
         "cpu_requested": cpu_requested,
+        "cpu_allocated": cpu_allocated,
         "cpu_eff_req": cpu_eff_req,
         "cpu_eff_alloc": cpu_eff_alloc,
-        "mem_eff_pct": mem_eff,
-        "time_eff_pct": time_eff,
+        "mem_eff": mem_eff,
+        "time_eff": time_eff,
         "user_cpu_pct": user_cpu_pct,
         "n_nodes": nodes_alloc,
         "step_count": step_count,

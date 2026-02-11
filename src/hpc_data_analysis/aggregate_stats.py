@@ -20,7 +20,7 @@ from hpc_data_analysis.slurm_utils import (
     fetch_job_data, calculate_job_metrics,
     LdapClient, load_ad_config, get_user_attribute,
     parse_date_range, format_value,
-    INCLUDED_STATES, SUCCESS_STATES, STATE_NAMES,
+    INCLUDED_STATES, SUCCESS_STATES, FAILED_STATES, STATE_NAMES,
 )
 
 
@@ -47,14 +47,15 @@ def parse_collate_by_arg(value):
 def init_stats_dict():
     """Initialize a statistics dictionary for a group."""
     return {
-        # Counts
+        # Counts (across all job states)
         "job_count": 0,
-        "job_count_success": 0,
-        "job_count_failed": 0,
-        "count_by_state": {name: 0 for name in STATE_NAMES.values()},
-        "exit_codes": {},
+        "job_count_success": 0,  # COMPLETED only
+        "job_count_failed": 0,   # All FAILED_STATES
+        # State counts for non-success efficiency-relevant states
+        "count_timeout": 0,
+        "count_out_of_memory": 0,
 
-        # Resource totals
+        # Resource totals (only for INCLUDED_STATES jobs)
         "total_elapsed": 0,
         "total_cpu": 0,
         "total_user_cpu": 0,
@@ -66,28 +67,19 @@ def init_stats_dict():
         "total_nodes": 0,
         "total_wait": 0,
 
-        # For efficiency calculations (all jobs)
+        # For efficiency calculations - requested CPUs
         "sum_cpu_requested": 0,
-        "sum_job_cpu_eff": 0,
+        "sum_job_cpu_eff_req": 0,
+        "count_cpu_eff_req": 0,
+        # For efficiency calculations - allocated CPUs
+        "sum_cpu_allocated": 0,
+        "sum_job_cpu_eff_alloc": 0,
+        "count_cpu_eff_alloc": 0,
+        # For efficiency calculations - memory and time
         "sum_job_mem_eff": 0,
         "sum_job_time_eff": 0,
-        "count_cpu_eff": 0,
         "count_mem_eff": 0,
         "count_time_eff": 0,
-
-        # For efficiency calculations (successful jobs only)
-        "success_total_elapsed": 0,
-        "success_total_cpu": 0,
-        "success_total_maxrss": 0,
-        "success_total_reqmem": 0,
-        "success_sum_cpu_requested": 0,
-        "success_sum_job_cpu_eff": 0,
-        "success_sum_job_mem_eff": 0,
-        "success_sum_job_time_eff": 0,
-        "success_count_cpu_eff": 0,
-        "success_count_mem_eff": 0,
-        "success_count_time_eff": 0,
-        "success_total_timelimit": 0,
     }
 
 
@@ -96,18 +88,33 @@ def init_stats_dict():
 # =============================================================================
 
 def update_stats(metrics, stats, collate_key):
-    """Update stats dictionary with job metrics."""
+    """Update stats dictionary with job metrics.
+
+    All jobs contribute to counts (job_count, success/failed).
+    Only INCLUDED_STATES jobs contribute to efficiency metrics and state counts.
+    """
     s = stats[collate_key]
+    state = metrics["state"]
     is_success = metrics["is_success"]
+    is_failed = state in FAILED_STATES
+    include_in_efficiency = state in INCLUDED_STATES
 
+    # All jobs: basic counts
     s["job_count"] += 1
-    s["job_count_success" if is_success else "job_count_failed"] += 1
-    state_name = STATE_NAMES.get(metrics["state"])
-    if state_name:
-        s["count_by_state"][state_name] += 1
+    if is_success:
+        s["job_count_success"] += 1
+    elif is_failed:
+        s["job_count_failed"] += 1
+    # Note: CANCELLED jobs count in job_count but not in success or failed
 
-    ec = metrics["exit_code"]
-    s["exit_codes"][ec] = s["exit_codes"].get(ec, 0) + 1
+    # Only INCLUDED_STATES jobs: state counts, resource totals, efficiency metrics
+    if not include_in_efficiency:
+        return
+
+    # State counts for non-success efficiency-relevant states
+    state_name = STATE_NAMES.get(state)
+    if state_name in ("timeout", "out_of_memory"):
+        s[f"count_{state_name}"] += 1
 
     s["total_elapsed"] += metrics["elapsed_sec"]
     s["total_cpu"] += metrics["total_cpu_sec"]
@@ -120,14 +127,19 @@ def update_stats(metrics, stats, collate_key):
     s["total_nodes"] += metrics["n_nodes"]
     s["total_wait"] += metrics["wait_sec"]
     s["sum_cpu_requested"] += metrics["cpu_requested"]
+    s["sum_cpu_allocated"] += metrics["cpu_allocated"]
 
-    cpu_eff = metrics["cpu_eff_req"]
-    mem_eff = metrics["mem_eff_pct"]
-    time_eff = metrics["time_eff_pct"]
+    cpu_eff_req = metrics["cpu_eff_req"]
+    cpu_eff_alloc = metrics["cpu_eff_alloc"]
+    mem_eff = metrics["mem_eff"]
+    time_eff = metrics["time_eff"]
 
-    if cpu_eff is not None:
-        s["sum_job_cpu_eff"] += cpu_eff
-        s["count_cpu_eff"] += 1
+    if cpu_eff_req is not None:
+        s["sum_job_cpu_eff_req"] += cpu_eff_req
+        s["count_cpu_eff_req"] += 1
+    if cpu_eff_alloc is not None:
+        s["sum_job_cpu_eff_alloc"] += cpu_eff_alloc
+        s["count_cpu_eff_alloc"] += 1
     if mem_eff is not None:
         s["sum_job_mem_eff"] += mem_eff
         s["count_mem_eff"] += 1
@@ -135,54 +147,36 @@ def update_stats(metrics, stats, collate_key):
         s["sum_job_time_eff"] += time_eff
         s["count_time_eff"] += 1
 
-    if is_success:
-        s["success_total_elapsed"] += metrics["elapsed_sec"]
-        s["success_total_cpu"] += metrics["total_cpu_sec"]
-        s["success_total_maxrss"] += metrics["maxrss_bytes"]
-        s["success_total_reqmem"] += metrics["reqmem_bytes"]
-        s["success_sum_cpu_requested"] += metrics["cpu_requested"]
-        s["success_total_timelimit"] += metrics["timelimit_sec"]
-        if cpu_eff is not None:
-            s["success_sum_job_cpu_eff"] += cpu_eff
-            s["success_count_cpu_eff"] += 1
-        if mem_eff is not None:
-            s["success_sum_job_mem_eff"] += mem_eff
-            s["success_count_mem_eff"] += 1
-        if time_eff is not None:
-            s["success_sum_job_time_eff"] += time_eff
-            s["success_count_time_eff"] += 1
-
 
 def calculate_final_efficiencies(s):
     """Calculate final weighted and average efficiencies."""
-    # All jobs
-    s["weighted_cpu_eff"] = (s["total_cpu"] / s["sum_cpu_requested"] * 100) if s["sum_cpu_requested"] > 0 else None
+    # Count of jobs included in efficiency stats (INCLUDED_STATES)
+    eff_job_count = s["job_count_success"] + s["count_timeout"] + s["count_out_of_memory"]
+
+    # Efficiency metrics - CPU based on requested CPUs
+    s["weighted_cpu_eff_req"] = (s["total_cpu"] / s["sum_cpu_requested"] * 100) if s["sum_cpu_requested"] > 0 else None
+    s["avg_cpu_eff_req"] = (s["sum_job_cpu_eff_req"] / s["count_cpu_eff_req"]) if s["count_cpu_eff_req"] > 0 else None
+    # Efficiency metrics - CPU based on allocated CPUs
+    s["weighted_cpu_eff_alloc"] = (s["total_cpu"] / s["sum_cpu_allocated"] * 100) if s["sum_cpu_allocated"] > 0 else None
+    s["avg_cpu_eff_alloc"] = (s["sum_job_cpu_eff_alloc"] / s["count_cpu_eff_alloc"]) if s["count_cpu_eff_alloc"] > 0 else None
+    # Efficiency metrics - memory and time
     s["weighted_mem_eff"] = (s["total_maxrss"] / s["total_reqmem"] * 100) if s["total_reqmem"] > 0 else None
     s["weighted_time_eff"] = (s["total_elapsed"] / s["total_timelimit"] * 100) if s["total_timelimit"] > 0 else None
-    s["avg_cpu_eff"] = (s["sum_job_cpu_eff"] / s["count_cpu_eff"]) if s["count_cpu_eff"] > 0 else None
     s["avg_mem_eff"] = (s["sum_job_mem_eff"] / s["count_mem_eff"]) if s["count_mem_eff"] > 0 else None
     s["avg_time_eff"] = (s["sum_job_time_eff"] / s["count_time_eff"]) if s["count_time_eff"] > 0 else None
-    s["avg_wait"] = (s["total_wait"] / s["job_count"]) if s["job_count"] > 0 else None
 
-    # Additional averages
-    s["avg_elapsed"] = (s["total_elapsed"] / s["job_count"]) if s["job_count"] > 0 else None
-    s["avg_cpu"] = (s["total_cpu"] / s["job_count"]) if s["job_count"] > 0 else None
-    s["avg_reqcpus"] = (s["total_reqcpus"] / s["job_count"]) if s["job_count"] > 0 else None
-    s["avg_reqmem"] = (s["total_reqmem"] / s["job_count"]) if s["job_count"] > 0 else None
-    s["avg_maxrss"] = (s["total_maxrss"] / s["job_count"]) if s["job_count"] > 0 else None
+    # Resource averages (based on INCLUDED_STATES jobs only)
+    s["avg_elapsed"] = (s["total_elapsed"] / eff_job_count) if eff_job_count > 0 else None
+    s["avg_cpu"] = (s["total_cpu"] / eff_job_count) if eff_job_count > 0 else None
+    s["avg_reqcpus"] = (s["total_reqcpus"] / eff_job_count) if eff_job_count > 0 else None
+    s["avg_reqmem"] = (s["total_reqmem"] / eff_job_count) if eff_job_count > 0 else None
+    s["avg_maxrss"] = (s["total_maxrss"] / eff_job_count) if eff_job_count > 0 else None
+    s["avg_wait"] = (s["total_wait"] / eff_job_count) if eff_job_count > 0 else None
 
     # User/System CPU ratio
     total_cpu_time = s["total_user_cpu"] + s["total_sys_cpu"]
     s["user_cpu_pct"] = (s["total_user_cpu"] / total_cpu_time * 100) if total_cpu_time > 0 else None
     s["sys_cpu_pct"] = (s["total_sys_cpu"] / total_cpu_time * 100) if total_cpu_time > 0 else None
-
-    # Successful jobs only
-    s["success_weighted_cpu_eff"] = (s["success_total_cpu"] / s["success_sum_cpu_requested"] * 100) if s["success_sum_cpu_requested"] > 0 else None
-    s["success_weighted_mem_eff"] = (s["success_total_maxrss"] / s["success_total_reqmem"] * 100) if s["success_total_reqmem"] > 0 else None
-    s["success_weighted_time_eff"] = (s["success_total_elapsed"] / s["success_total_timelimit"] * 100) if s["success_total_timelimit"] > 0 else None
-    s["success_avg_cpu_eff"] = (s["success_sum_job_cpu_eff"] / s["success_count_cpu_eff"]) if s["success_count_cpu_eff"] > 0 else None
-    s["success_avg_mem_eff"] = (s["success_sum_job_mem_eff"] / s["success_count_mem_eff"]) if s["success_count_mem_eff"] > 0 else None
-    s["success_avg_time_eff"] = (s["success_sum_job_time_eff"] / s["success_count_time_eff"]) if s["success_count_time_eff"] > 0 else None
 
 
 # =============================================================================
@@ -193,9 +187,10 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
     """Output statistics as CSV."""
     headers = [
         collate_label if collate_label else "global",
+        # Job counts
         "job_count", "job_count_success", "job_count_failed",
-        "count_completed", "count_cancelled", "count_failed",
-        "count_timeout", "count_node_fail", "count_preempted",
+        "count_timeout", "count_out_of_memory",
+        # Resource totals and averages
         "total_elapsed_sec", "avg_elapsed_sec",
         "total_cpu_sec", "avg_cpu_sec",
         "total_user_cpu_sec", "total_sys_cpu_sec", "user_cpu_pct", "sys_cpu_pct",
@@ -204,13 +199,11 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
         "total_reqcpus", "avg_reqcpus",
         "total_nodes",
         "total_wait_sec", "avg_wait_sec",
-        "weighted_cpu_eff_pct", "avg_cpu_eff_pct",
-        "weighted_mem_eff_pct", "avg_mem_eff_pct",
-        "weighted_time_eff_pct", "avg_time_eff_pct",
-        "success_weighted_cpu_eff_pct", "success_avg_cpu_eff_pct",
-        "success_weighted_mem_eff_pct", "success_avg_mem_eff_pct",
-        "success_weighted_time_eff_pct", "success_avg_time_eff_pct",
-        "exit_codes",
+        # Efficiency metrics
+        "weighted_cpu_eff_req", "avg_cpu_eff_req",
+        "weighted_cpu_eff_alloc", "avg_cpu_eff_alloc",
+        "weighted_mem_eff", "avg_mem_eff",
+        "weighted_time_eff", "avg_time_eff",
     ]
 
     out = outfile if outfile else sys.stdout
@@ -218,18 +211,15 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
         print(",".join(headers), file=out)
 
     for key, s in sorted(stats.items(), key=lambda x: -x[1]["job_count"]):
-        exit_codes_str = ";".join(f"{k}:{v}" for k, v in sorted(s["exit_codes"].items()))
         row = [
             f'"{key}"',
+            # Job counts
             format_value(s["job_count"]),
             format_value(s["job_count_success"]),
             format_value(s["job_count_failed"]),
-            format_value(s["count_by_state"]["completed"]),
-            format_value(s["count_by_state"]["cancelled"]),
-            format_value(s["count_by_state"]["failed"]),
-            format_value(s["count_by_state"]["timeout"]),
-            format_value(s["count_by_state"]["node_fail"]),
-            format_value(s["count_by_state"]["preempted"]),
+            format_value(s["count_timeout"]),
+            format_value(s["count_out_of_memory"]),
+            # Resource totals and averages
             format_value(s["total_elapsed"]),
             format_value(s["avg_elapsed"]),
             format_value(s["total_cpu"]),
@@ -247,19 +237,15 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
             format_value(s["total_nodes"]),
             format_value(s["total_wait"]),
             format_value(s["avg_wait"]),
-            format_value(s["weighted_cpu_eff"]),
-            format_value(s["avg_cpu_eff"]),
+            # Efficiency metrics
+            format_value(s["weighted_cpu_eff_req"]),
+            format_value(s["avg_cpu_eff_req"]),
+            format_value(s["weighted_cpu_eff_alloc"]),
+            format_value(s["avg_cpu_eff_alloc"]),
             format_value(s["weighted_mem_eff"]),
             format_value(s["avg_mem_eff"]),
             format_value(s["weighted_time_eff"]),
             format_value(s["avg_time_eff"]),
-            format_value(s["success_weighted_cpu_eff"]),
-            format_value(s["success_avg_cpu_eff"]),
-            format_value(s["success_weighted_mem_eff"]),
-            format_value(s["success_avg_mem_eff"]),
-            format_value(s["success_weighted_time_eff"]),
-            format_value(s["success_avg_time_eff"]),
-            f'"{exit_codes_str}"',
         ]
         print(",".join(row), file=out)
 
@@ -322,11 +308,6 @@ def main():
 
     for row in fetch_job_data(cursor, since_ts, until_ts, special_steps):
         job_count += 1
-        state = row[3]  # state is at index 3 (after job_db_inx, id_job, user)
-
-        if state not in INCLUDED_STATES:
-            continue
-
         metrics = calculate_job_metrics(row)
         username = metrics["username"]
 
