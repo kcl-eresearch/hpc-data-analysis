@@ -27,8 +27,5 @@ notebook = [
 hpc-aggregate-stats = "hpc_data_analysis.aggregate_stats:main"
 hpc-job-stats = "hpc_data_analysis.job_stats:main"
 
-[tool.setuptools]
-packages = ["hpc_data_analysis"]
-
-[tool.setuptools.package-dir]
-hpc_data_analysis = "src/hpc_data_analysis"
+[tool.setuptools.packages.find]
+where = ["src"]
