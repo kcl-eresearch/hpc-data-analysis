@@ -16,13 +16,17 @@ Key questions addressed:
 2. How many steps do jobs typically have? (distribution)
 3. What step types exist? (special vs regular, with frequencies)
 4. How is CPU time distributed across steps? (batch vs srun)
+5. Multi-node jobs: CPU time in tres_usage_in_max vs user_sec/sys_sec
+6. Batch-only and interactive-only jobs
 
 Output sections:
-1. Sample job with step data (showing schema and relationships)
+1. Sample jobs with step data (showing schema and relationships)
 2. Step count distribution per job
 3. Step type breakdown (special vs regular, frequencies)
 4. Batch vs srun CPU comparison (to check for double-counting)
 5. Distribution of batch CPU time in multi-step jobs
+6. Batch-only and interactive-only jobs
+7. Multi-node jobs — CPU accounting via tres_usage_in_max
 
 Data sources:
 - create_job_table: job_db_inx (links to steps), id_job, cpus_req, tres_req, timestamps
@@ -59,10 +63,39 @@ with open(OUTPUT_FILE, 'w') as f:
         print(text, file=f)
 
     # =========================================================================
-    # Part 1: Sample job with step data (schema illustration)
+    # Background: Job submission types and step relationships
     # =========================================================================
     out("=" * 80)
-    out("PART 1: Sample job with step data — illustrating schema and relationships")
+    out("BACKGROUND: Job submission types and step relationships")
+    out("=" * 80)
+    out()
+    out("Batch vs Interactive Jobs:")
+    out("  - BATCH job: Submitted with 'sbatch script.sh'. The script runs as the")
+    out("    'batch' step (id_step=-5). Most common job type.")
+    out("  - INTERACTIVE job: Submitted with 'salloc' or 'srun --pty bash'. Creates")
+    out("    an 'interactive' step (id_step=-6). User gets a shell on compute node.")
+    out("  - A job is either batch OR interactive based on submission method —")
+    out("    they cannot occur together in the same job.")
+    out()
+    out("srun steps (regular steps, id_step >= 0):")
+    out("  - Created when user runs 'srun <command>' inside a job")
+    out("  - Can occur inside EITHER batch or interactive jobs")
+    out("  - Each srun command creates a new step numbered 0, 1, 2, ...")
+    out("  - step_name records the command/executable that was run")
+    out()
+    out("Typical job structures:")
+    out("  - Batch-only: Just batch step (-5), no srun commands in script")
+    out("  - Batch + srun: Batch step (-5) + regular steps (0, 1, 2...)")
+    out("  - Interactive-only: Just interactive step (-6), user got shell but")
+    out("    didn't run any srun commands")
+    out("  - Interactive + srun: Interactive step (-6) + regular steps (0, 1, 2...)")
+
+    # =========================================================================
+    # Part 1: Sample jobs with step data (schema illustration)
+    # =========================================================================
+    out()
+    out("=" * 80)
+    out("PART 1: Sample jobs with step data — illustrating schema and relationships")
     out("=" * 80)
     out()
     out("Data sources:")
@@ -70,6 +103,7 @@ with open(OUTPUT_FILE, 'w') as f:
     out("    - job_db_inx: internal DB key (links to steps)")
     out("    - id_job: Slurm job ID (what users see)")
     out("    - cpus_req: requested CPUs")
+    out("    - nodes_alloc: number of nodes allocated")
     out("    - tres_req/tres_alloc: TRES-encoded resource strings")
     out("    - time_submit/time_start/time_end: Unix timestamps")
     out("    - timelimit: requested time limit (minutes)")
@@ -77,33 +111,38 @@ with open(OUTPUT_FILE, 'w') as f:
     out("  create_step_table columns:")
     out("    - job_db_inx: FK to job table")
     out("    - id_step: step ID (<0 = special, >=0 = srun steps)")
-    out("    - step_name: human-readable name")
+    out("    - step_name: human-readable name (command/executable for srun steps)")
     out("    - user_sec/user_usec: user-mode CPU time (seconds + microseconds)")
     out("    - sys_sec/sys_usec: system-mode CPU time (seconds + microseconds)")
     out("    - tres_usage_in_max: peak resource usage (TRES-encoded)")
 
-    # Find a completed job with multiple steps
+    # Sample 1: Single-step batch job
+    out()
+    out("-" * 40)
+    out("Sample 1: Single-step batch job (batch step only, no srun)")
+    out("-" * 40)
     cur.execute("""
-        SELECT j.job_db_inx, j.id_job, j.cpus_req, j.tres_req,
+        SELECT j.job_db_inx, j.id_job, j.cpus_req, j.nodes_alloc, j.tres_req,
                j.time_start, j.time_end, j.timelimit
         FROM create_job_table j
         JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
         WHERE j.state = 3 AND j.time_start > 0 AND j.time_end > 0
         GROUP BY j.job_db_inx
-        HAVING COUNT(*) >= 2
+        HAVING COUNT(*) = 1
+           AND SUM(CASE WHEN s.step_name = 'batch' THEN 1 ELSE 0 END) = 1
         ORDER BY j.id_job DESC
         LIMIT 1
     """)
     job = cur.fetchone()
     if job:
-        job_db_inx, id_job, cpus_req, tres_req, time_start, time_end, timelimit = job
+        job_db_inx, id_job, cpus_req, nodes_alloc, tres_req, time_start, time_end, timelimit = job
         out()
-        out(f"Sample job (id_job={id_job}):")
-        out(f"  job_db_inx:  {job_db_inx} (internal key)")
-        out(f"  cpus_req:    {cpus_req}")
-        out(f"  tres_req:    {tres_req}")
-        out(f"  timelimit:   {timelimit} min")
-        out(f"  elapsed:     {time_end - time_start} sec")
+        out(f"Job id_job={id_job}:")
+        out(f"  cpus_req:     {cpus_req}")
+        out(f"  nodes_alloc:  {nodes_alloc}")
+        out(f"  tres_req:     {tres_req}")
+        out(f"  timelimit:    {timelimit} min")
+        out(f"  elapsed:      {time_end - time_start} sec")
 
         cur.execute("""
             SELECT id_step, step_name, user_sec, user_usec, sys_sec, sys_usec,
@@ -113,13 +152,102 @@ with open(OUTPUT_FILE, 'w') as f:
             ORDER BY id_step
         """, (job_db_inx,))
         out()
-        out(f"  Steps for this job:")
-        out(f"    {'id_step':>8}  {'step_name':<12}  {'user_sec':>10}  {'sys_sec':>8}  tres_usage_in_max")
-        out(f"    {'-'*8}  {'-'*12}  {'-'*10}  {'-'*8}  {'-'*30}")
+        out(f"  Steps:")
+        out(f"    {'id_step':>8}  {'step_name':<15}  {'user_sec':>10}  {'sys_sec':>8}  tres_usage_in_max")
+        out(f"    {'-'*8}  {'-'*15}  {'-'*10}  {'-'*8}  {'-'*40}")
         for step in cur:
-            name = str(step[1])[:12] if step[1] else ''
-            total_cpu = step[2] + step[4] + (step[3] + step[5]) / 1e6
-            out(f"    {step[0]:>8}  {name:<12}  {step[2]:>10}  {step[4]:>8}  {step[6]}")
+            name = str(step[1])[:15] if step[1] else ''
+            tres = str(step[6])[:40] if step[6] else ''
+            out(f"    {step[0]:>8}  {name:<15}  {step[2]:>10}  {step[4]:>8}  {tres}")
+
+    # Sample 2: Multi-step batch job (batch + srun steps)
+    out()
+    out("-" * 40)
+    out("Sample 2: Multi-step batch job (batch + srun steps)")
+    out("-" * 40)
+    cur.execute("""
+        SELECT j.job_db_inx, j.id_job, j.cpus_req, j.nodes_alloc, j.tres_req,
+               j.time_start, j.time_end, j.timelimit
+        FROM create_job_table j
+        JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
+        WHERE j.state = 3 AND j.time_start > 0 AND j.time_end > 0
+        GROUP BY j.job_db_inx
+        HAVING COUNT(*) BETWEEN 3 AND 6
+           AND SUM(CASE WHEN s.step_name = 'batch' THEN 1 ELSE 0 END) = 1
+           AND SUM(CASE WHEN s.id_step >= 0 THEN 1 ELSE 0 END) >= 2
+        ORDER BY j.id_job DESC
+        LIMIT 1
+    """)
+    job = cur.fetchone()
+    if job:
+        job_db_inx, id_job, cpus_req, nodes_alloc, tres_req, time_start, time_end, timelimit = job
+        out()
+        out(f"Job id_job={id_job}:")
+        out(f"  cpus_req:     {cpus_req}")
+        out(f"  nodes_alloc:  {nodes_alloc}")
+        out(f"  tres_req:     {tres_req}")
+        out(f"  timelimit:    {timelimit} min")
+        out(f"  elapsed:      {time_end - time_start} sec")
+
+        cur.execute("""
+            SELECT id_step, step_name, user_sec, user_usec, sys_sec, sys_usec,
+                   tres_usage_in_max
+            FROM create_step_table
+            WHERE job_db_inx = %s
+            ORDER BY id_step
+        """, (job_db_inx,))
+        out()
+        out(f"  Steps:")
+        out(f"    {'id_step':>8}  {'step_name':<25}  {'user_sec':>10}  {'sys_sec':>8}  tres_usage_in_max")
+        out(f"    {'-'*8}  {'-'*25}  {'-'*10}  {'-'*8}  {'-'*40}")
+        for step in cur:
+            name = str(step[1])[:25] if step[1] else ''
+            tres = str(step[6])[:40] if step[6] else ''
+            out(f"    {step[0]:>8}  {name:<25}  {step[2]:>10}  {step[4]:>8}  {tres}")
+
+    # Sample 3: Job with many srun steps
+    out()
+    out("-" * 40)
+    out("Sample 3: Job with many srun steps (10+ steps)")
+    out("-" * 40)
+    cur.execute("""
+        SELECT j.job_db_inx, j.id_job, j.cpus_req, j.nodes_alloc, j.tres_req,
+               j.time_start, j.time_end, j.timelimit, COUNT(*) as step_count
+        FROM create_job_table j
+        JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
+        WHERE j.state = 3 AND j.time_start > 0 AND j.time_end > 0
+        GROUP BY j.job_db_inx
+        HAVING COUNT(*) >= 10
+        ORDER BY j.id_job DESC
+        LIMIT 1
+    """)
+    job = cur.fetchone()
+    if job:
+        job_db_inx, id_job, cpus_req, nodes_alloc, tres_req, time_start, time_end, timelimit, step_count = job
+        out()
+        out(f"Job id_job={id_job} ({step_count} steps):")
+        out(f"  cpus_req:     {cpus_req}")
+        out(f"  nodes_alloc:  {nodes_alloc}")
+        out(f"  tres_req:     {tres_req}")
+        out(f"  timelimit:    {timelimit} min")
+        out(f"  elapsed:      {time_end - time_start} sec")
+
+        cur.execute("""
+            SELECT id_step, step_name, user_sec, user_usec, sys_sec, sys_usec,
+                   tres_usage_in_max
+            FROM create_step_table
+            WHERE job_db_inx = %s
+            ORDER BY id_step
+            LIMIT 15
+        """, (job_db_inx,))
+        out()
+        out(f"  Steps (first 15 of {step_count}):")
+        out(f"    {'id_step':>8}  {'step_name':<25}  {'user_sec':>10}  {'sys_sec':>8}  tres_usage_in_max")
+        out(f"    {'-'*8}  {'-'*25}  {'-'*10}  {'-'*8}  {'-'*40}")
+        for step in cur:
+            name = str(step[1])[:25] if step[1] else ''
+            tres = str(step[6])[:40] if step[6] else ''
+            out(f"    {step[0]:>8}  {name:<25}  {step[2]:>10}  {step[4]:>8}  {tres}")
 
     # =========================================================================
     # Part 2: Step count distribution per job
@@ -156,6 +284,17 @@ with open(OUTPUT_FILE, 'w') as f:
 
     out()
     out(f"  Total jobs shown: {total_jobs:,}")
+
+    # Step ID range
+    cur.execute("""
+        SELECT MIN(id_step), MAX(id_step), COUNT(*), COUNT(DISTINCT id_step)
+        FROM create_step_table
+    """)
+    min_step, max_step, total_steps, distinct_steps = cur.fetchone()
+    out()
+    out(f"  Step ID range: {min_step} to {max_step}")
+    out(f"  Total step rows: {total_steps:,}")
+    out(f"  Distinct step IDs: {distinct_steps:,}")
 
     # =========================================================================
     # Part 3: Step type breakdown (special vs regular)
@@ -194,7 +333,8 @@ with open(OUTPUT_FILE, 'w') as f:
     out()
     out("Special steps detail (id_step < 0):")
     cur.execute("""
-        SELECT step_name, id_step, COUNT(*) as cnt
+        SELECT step_name, id_step, COUNT(*) as cnt,
+               AVG(user_sec) as avg_user, AVG(sys_sec) as avg_sys
         FROM create_step_table
         WHERE id_step < 0
         GROUP BY step_name, id_step
@@ -202,11 +342,11 @@ with open(OUTPUT_FILE, 'w') as f:
     """)
     rows = list(cur)
     special_total = sum(r[2] for r in rows)
-    out(f"  {'step_name':>15}  {'id_step':>8}  {'count':>12}  {'%':>8}")
-    out(f"  {'-'*15}  {'-'*8}  {'-'*12}  {'-'*8}")
-    for name, id_step, cnt in rows:
+    out(f"  {'step_name':>15}  {'id_step':>8}  {'count':>12}  {'%':>8}  {'avg_user_sec':>12}  {'avg_sys_sec':>12}")
+    out(f"  {'-'*15}  {'-'*8}  {'-'*12}  {'-'*8}  {'-'*12}  {'-'*12}")
+    for name, id_step, cnt, avg_user, avg_sys in rows:
         pct = (cnt / special_total * 100) if special_total else 0
-        out(f"  {str(name):>15}  {id_step:>8}  {cnt:>12}  {pct:>7.2f}%")
+        out(f"  {str(name):>15}  {id_step:>8}  {cnt:>12}  {pct:>7.2f}%  {avg_user:>12.1f}  {avg_sys:>12.1f}")
 
     # Regular steps — summarize instead of listing all unique names
     out()
@@ -226,12 +366,13 @@ with open(OUTPUT_FILE, 'w') as f:
     out(f"  Unique step names:       {unique_names:>12}")
     out(f"  Step ID range:           {min_id} to {max_id}")
     out()
-    out("  Note: Most unique names are user script paths (e.g., '/path/to/myscript.sh').")
+    out("  Note: step_name for regular steps records the command/executable run with srun.")
+    out("  Many unique names are user script paths (e.g., '/path/to/myscript.sh').")
     out("  These are not listed individually as they reflect individual job scripts.")
 
     # Top non-path step names (common patterns)
     out()
-    out("Top regular step names (excluding unique script paths):")
+    out("Top regular step names (names appearing >100 times — likely common executables):")
     cur.execute("""
         SELECT step_name, COUNT(*) as cnt
         FROM create_step_table
@@ -243,12 +384,12 @@ with open(OUTPUT_FILE, 'w') as f:
     """)
     rows = list(cur)
     if rows:
-        out(f"  {'step_name':>30}  {'count':>12}  {'%':>8}")
-        out(f"  {'-'*30}  {'-'*12}  {'-'*8}")
+        out(f"  {'step_name':>40}  {'count':>12}  {'%':>8}")
+        out(f"  {'-'*40}  {'-'*12}  {'-'*8}")
         for name, cnt in rows:
             pct = (cnt / total_regular * 100) if total_regular else 0
-            name_str = str(name)[:30] if name else '(null)'
-            out(f"  {name_str:>30}  {cnt:>12}  {pct:>7.2f}%")
+            name_str = str(name)[:40] if name else '(null)'
+            out(f"  {name_str:>40}  {cnt:>12}  {pct:>7.2f}%")
     else:
         out("  No regular step names with count > 100")
 
@@ -375,15 +516,20 @@ with open(OUTPUT_FILE, 'w') as f:
         out("  No multi-step jobs found where batch_cpu > 100 sec")
 
     # =========================================================================
-    # Part 6: Batch-only jobs (no srun steps)
+    # Part 6: Batch-only and interactive-only jobs
     # =========================================================================
     out()
     out("=" * 80)
-    out("PART 6: Batch-only jobs — jobs without srun steps")
+    out("PART 6: Batch-only and interactive-only jobs")
     out("=" * 80)
     out()
-    out("These jobs run everything in the batch script (no srun commands).")
-    out("For these, batch step CPU is the total job CPU.")
+    out("Jobs that have only the submission step (no srun commands).")
+
+    # Batch-only jobs
+    out()
+    out("Batch-only jobs (batch step, no srun steps):")
+    out("  These run everything in the batch script directly (no srun commands).")
+    out("  For these, batch step CPU is the total job CPU.")
 
     cur.execute("""
         SELECT COUNT(*) as batch_only_count
@@ -403,7 +549,7 @@ with open(OUTPUT_FILE, 'w') as f:
     batch_only_pct = (batch_only_count / total_jobs_with_steps * 100) if total_jobs_with_steps else 0
 
     out()
-    out(f"  Batch-only jobs (no srun):  {batch_only_count:>12}  ({batch_only_pct:>6.2f}%)")
+    out(f"  Batch-only jobs:            {batch_only_count:>12}  ({batch_only_pct:>6.2f}%)")
     out(f"  Total jobs with steps:      {total_jobs_with_steps:>12}")
 
     # Sample batch-only jobs
@@ -420,11 +566,149 @@ with open(OUTPUT_FILE, 'w') as f:
         LIMIT 10
     """)
     out()
-    out("Sample batch-only jobs (highest CPU):")
-    out(f"  {'job_db_inx':>15}  {'batch_cpu (sec)':>15}  {'steps':>6}")
-    out(f"  {'-'*15}  {'-'*15}  {'-'*6}")
+    out("  Sample batch-only jobs (highest CPU):")
+    out(f"    {'job_db_inx':>15}  {'batch_cpu (sec)':>15}  {'steps':>6}")
+    out(f"    {'-'*15}  {'-'*15}  {'-'*6}")
     for row in cur:
-        out(f"  {row[0]:>15}  {row[1]:>15}  {row[2]:>6}")
+        out(f"    {row[0]:>15}  {row[1]:>15}  {row[2]:>6}")
+
+    # Interactive-only jobs
+    out()
+    out("Interactive-only jobs (interactive step, no srun steps):")
+    out("  User got an interactive shell but didn't run any srun commands.")
+
+    cur.execute("""
+        SELECT COUNT(*) as interactive_only_count
+        FROM (
+            SELECT job_db_inx
+            FROM create_step_table
+            GROUP BY job_db_inx
+            HAVING SUM(CASE WHEN step_name = 'interactive' THEN 1 ELSE 0 END) > 0
+               AND SUM(CASE WHEN id_step >= 0 THEN 1 ELSE 0 END) = 0
+        ) sub
+    """)
+    interactive_only_count = cur.fetchone()[0]
+    interactive_only_pct = (interactive_only_count / total_jobs_with_steps * 100) if total_jobs_with_steps else 0
+
+    out()
+    out(f"  Interactive-only jobs:      {interactive_only_count:>12}  ({interactive_only_pct:>6.2f}%)")
+    out(f"  Total jobs with steps:      {total_jobs_with_steps:>12}")
+
+    if interactive_only_count > 0:
+        cur.execute("""
+            SELECT
+                s.job_db_inx,
+                MAX(CASE WHEN s.step_name = 'interactive' THEN s.user_sec + s.sys_sec END) AS interactive_cpu,
+                COUNT(*) AS num_steps
+            FROM create_step_table s
+            GROUP BY s.job_db_inx
+            HAVING SUM(CASE WHEN s.step_name = 'interactive' THEN 1 ELSE 0 END) > 0
+               AND SUM(CASE WHEN s.id_step >= 0 THEN 1 ELSE 0 END) = 0
+            ORDER BY interactive_cpu DESC
+            LIMIT 10
+        """)
+        out()
+        out("  Sample interactive-only jobs (highest CPU):")
+        out(f"    {'job_db_inx':>15}  {'interactive_cpu (sec)':>20}  {'steps':>6}")
+        out(f"    {'-'*15}  {'-'*20}  {'-'*6}")
+        for row in cur:
+            out(f"    {row[0]:>15}  {row[1]:>20}  {row[2]:>6}")
+
+    # =========================================================================
+    # Part 7: Multi-node jobs — CPU time in tres_usage_in_max vs user_sec/sys_sec
+    # =========================================================================
+    out()
+    out("=" * 80)
+    out("PART 7: Multi-node jobs — CPU accounting via tres_usage_in_max")
+    out("=" * 80)
+    out()
+    out("For multi-node jobs with srun steps, CPU time is often stored differently:")
+    out("  - user_sec/sys_sec may be 0 for regular steps")
+    out("  - tres_usage_in_max contains the actual CPU time (TRES ID 1 = CPU)")
+    out()
+    out("This affects efficiency calculations — we need to use tres_usage_in_max")
+    out("for multi-node jobs to get accurate CPU time.")
+
+    # Find multi-node jobs where srun steps have user_sec=0 but tres_usage_in_max has values
+    cur.execute("""
+        SELECT j.job_db_inx, j.id_job, j.cpus_req, j.nodes_alloc,
+               j.time_end - j.time_start as elapsed
+        FROM create_job_table j
+        JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
+        WHERE j.state = 3
+          AND j.nodes_alloc > 1
+          AND s.id_step >= 0
+          AND s.user_sec = 0
+          AND s.sys_sec = 0
+          AND s.tres_usage_in_max LIKE '%%1=%%'
+        GROUP BY j.job_db_inx
+        HAVING COUNT(*) >= 2
+        ORDER BY j.nodes_alloc DESC, j.cpus_req DESC
+        LIMIT 5
+    """)
+    jobs = list(cur)
+
+    if jobs:
+        out()
+        out("Sample multi-node jobs where srun steps have user_sec=0 but tres_usage_in_max has CPU values:")
+        for job_db_inx, id_job, cpus_req, nodes_alloc, elapsed in jobs:
+            out()
+            out(f"  Job {id_job} ({cpus_req} CPUs across {nodes_alloc} nodes, {elapsed} sec elapsed):")
+
+            cur.execute("""
+                SELECT id_step, step_name, user_sec, sys_sec, tres_usage_in_max
+                FROM create_step_table
+                WHERE job_db_inx = %s
+                ORDER BY id_step
+                LIMIT 10
+            """, (job_db_inx,))
+            out(f"    {'id_step':>8}  {'step_name':<35}  {'user_sec':>10}  {'sys_sec':>8}  tres_usage_in_max (CPU)")
+            out(f"    {'-'*8}  {'-'*35}  {'-'*10}  {'-'*8}  {'-'*30}")
+            for step in cur:
+                name = str(step[1])[:35] if step[1] else ''
+                # Extract CPU value from tres_usage_in_max (format: "1=<cpu_usec>,2=...")
+                tres = step[4] or ''
+                cpu_val = ''
+                if tres and '1=' in tres:
+                    for part in tres.split(','):
+                        if part.startswith('1='):
+                            cpu_val = part[2:]
+                            # Format large numbers with commas
+                            try:
+                                cpu_val = f"{int(cpu_val):,}"
+                            except ValueError:
+                                pass
+                            break
+                out(f"    {step[0]:>8}  {name:<35}  {step[2]:>10}  {step[3]:>8}  1={cpu_val}")
+    else:
+        out()
+        out("  No multi-node jobs found with the expected pattern.")
+
+    # Summary of multi-node vs single-node CPU accounting
+    out()
+    out("Summary: Multi-node vs single-node CPU accounting:")
+    cur.execute("""
+        SELECT
+            CASE WHEN j.nodes_alloc > 1 THEN 'multi-node' ELSE 'single-node' END as node_type,
+            COUNT(DISTINCT j.job_db_inx) as job_count,
+            SUM(CASE WHEN s.id_step >= 0 AND s.user_sec = 0 AND s.sys_sec = 0
+                     AND s.tres_usage_in_max LIKE '%%1=%%' THEN 1 ELSE 0 END) as steps_with_zero_usersec_but_tres,
+            SUM(CASE WHEN s.id_step >= 0 THEN 1 ELSE 0 END) as total_regular_steps
+        FROM create_job_table j
+        JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
+        WHERE j.state = 3
+        GROUP BY node_type
+    """)
+    out()
+    out(f"  {'node_type':>12}  {'jobs':>12}  {'steps_zero_usec_with_tres':>26}  {'total_regular_steps':>20}")
+    out(f"  {'-'*12}  {'-'*12}  {'-'*26}  {'-'*20}")
+    for row in cur:
+        node_type, job_count, zero_steps, total_steps = row
+        out(f"  {node_type:>12}  {job_count:>12}  {zero_steps:>26}  {total_steps:>20}")
+
+    out()
+    out("Implication: For multi-node jobs, our CPU efficiency calculation may need to")
+    out("use tres_usage_in_max instead of user_sec+sys_sec to get accurate values.")
 
 conn.close()
 print(f"\nOutput saved to {OUTPUT_FILE}", file=sys.stderr)
