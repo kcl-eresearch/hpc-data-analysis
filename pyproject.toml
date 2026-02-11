@@ -29,3 +29,4 @@ hpc-job-stats = "hpc_data_analysis.job_stats:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+include = ["hpc_data_analysis*"]

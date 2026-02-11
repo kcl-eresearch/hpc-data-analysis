@@ -192,7 +192,7 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
         (job_db_inx, id_job, username, state, exit_code, time_submit,
          time_start, time_end, cpus_req, tres_req, tres_alloc, timelimit, nodes_alloc,
          total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
-         max_mem_bytes, submission_type, step_count)
+         max_mem_bytes, submission_type, step_count, n_tasks)
     """
     # Build exclusion list from all discovered special steps
     exclude_ids = ", ".join(str(sid) for sid in special_steps.values())
@@ -251,7 +251,10 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
                 WHEN MAX(CASE WHEN s.id_step = {batch_id} THEN 1 ELSE 0 END) = 1 THEN 'batch'
                 ELSE 'unknown'
             END AS submission_type,
-            COUNT(DISTINCT s.id_step) AS step_count
+            COUNT(DISTINCT s.id_step) AS step_count,
+            MAX(CASE WHEN s.id_step = {batch_id} THEN s.task_cnt
+                     WHEN s.id_step = {interactive_id} THEN s.task_cnt
+                     ELSE NULL END) AS n_tasks
         FROM create_job_table j
         JOIN create_assoc_table a ON j.id_assoc = a.id_assoc
         LEFT JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
@@ -279,14 +282,14 @@ def calculate_job_metrics(row):
         - cpu_eff_req (based on req_cpus), cpu_eff_alloc (based on alloc_cpus)
         - mem_eff_pct, time_eff_pct (percentages or None)
         - user_cpu_pct (percentage or None)
-        - n_nodes, step_count
+        - n_nodes, step_count, n_tasks
         - is_success (bool)
         - submission_type ('batch', 'interactive', or 'unknown')
     """
     (job_db_inx, id_job, username, state, exit_code, time_submit, time_start,
      time_end, cpus_req_col, tres_req, tres_alloc, timelimit, nodes_alloc,
      total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
-     max_mem_bytes, submission_type, step_count) = row
+     max_mem_bytes, submission_type, step_count, n_tasks) = row
 
     # Convert types
     time_submit = float(time_submit) if time_submit else 0
@@ -315,6 +318,7 @@ def calculate_job_metrics(row):
     if alloc_cpus == 0:
         alloc_cpus = req_cpus  # fallback to requested if alloc not available
     step_count = int(step_count) if step_count else 0
+    n_tasks = int(n_tasks) if n_tasks else 0
 
     # Memory values
     maxrss = int(max_mem_bytes) if max_mem_bytes else 0
@@ -361,6 +365,7 @@ def calculate_job_metrics(row):
         "user_cpu_pct": user_cpu_pct,
         "n_nodes": nodes_alloc,
         "step_count": step_count,
+        "n_tasks": n_tasks,
         "is_success": is_success,
         "submission_type": submission_type,
     }

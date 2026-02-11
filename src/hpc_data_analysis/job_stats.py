@@ -36,7 +36,7 @@ def output_csv(jobs, outfile, include_faculty=False):
         "cpu_eff_req", "cpu_eff_alloc", "mem_eff_pct", "time_eff_pct",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
         "maxrss_bytes", "reqmem_bytes",
-        "req_cpus", "alloc_cpus", "n_nodes"
+        "req_cpus", "alloc_cpus", "n_nodes", "n_tasks"
     ])
 
     print(",".join(headers), file=outfile)
@@ -70,6 +70,7 @@ def output_csv(jobs, outfile, include_faculty=False):
             str(job["req_cpus"]),
             str(job.get("alloc_cpus", job["req_cpus"])),
             str(job["n_nodes"]),
+            str(job.get("n_tasks", 0)),
         ])
         print(",".join(row), file=outfile)
 
