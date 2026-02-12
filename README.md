@@ -21,19 +21,19 @@ hpc-data-analysis/
 ├── src/
 │   └── hpc_data_analysis/
 │       ├── __init__.py
-│       ├── slurm_utils.py          # Shared utilities: MySQL, LDAP, TRES parsing
-│       ├── aggregate_stats.py      # Aggregate statistics per faculty (→ CSV)
-│       └── job_stats.py            # Per-job efficiency metrics (→ CSV)
+│       ├── slurm_utils.py                  # Shared utilities: MySQL, LDAP, TRES parsing
+│       ├── aggregate_stats.py              # Aggregate statistics per faculty (→ CSV)
+│       └── job_stats.py                    # Per-job efficiency metrics (→ CSV)
 ├── docs/
-│   ├── analysis/                   # Documentation for analysts
-│   └── development/                # Documentation for developers
+│   ├── analysis/                           # Documentation for analysts
+│   └── development/                        # Documentation for developers
 ├── notebooks/
-│   ├── visualisation_users.ipynb          # User-focused: average efficiency metrics
-│   └── visualisation_infrastructure.ipynb # Infrastructure-focused: weighted efficiency metrics
-├── dev_scripts/                    # Diagnostic queries and their output
-├── results/                        # Generated CSV output (gitignored)
-├── pyproject.toml                  # Package metadata and dependencies
-├── config.yaml                     # MySQL credentials (not committed)
+│   ├── visualisation_users.ipynb           # User-focused: average efficiency metrics
+│   └── visualisation_infrastructure.ipynb  # Infrastructure-focused: weighted efficiency metrics
+├── dev_scripts/                            # Diagnostic queries and their output
+├── results/                                # Generated CSV output (gitignored)
+├── pyproject.toml                          # Package metadata and dependencies
+├── config.yaml                             # MySQL credentials (not committed)
 └── README.md
 ```
 
@@ -91,8 +91,12 @@ Run from the repository root directory.
 ```bash
 PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats \
     --since 2025-01-01 --until 2025-02-01 \
-    --collate_by st=faculty --output results/hpc_stats_output.csv
+    --collate_by st=faculty --collate_by none \
+    --output results/hpc_stats_output.csv
 ```
+
+- `--collate_by st=faculty`: Groups stats by faculty (LDAP attribute)
+- `--collate_by none`: Adds a global summary row (`faculty="all"`)
 
 ### 2. Generate per-job metrics
 

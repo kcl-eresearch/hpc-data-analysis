@@ -344,36 +344,30 @@ def main():
         groups = list(stats_by_attr[attr].keys())
         print(f"Groups found for '{attr}': {groups}", file=sys.stderr)
 
-    # Output faculty stats
+    # Output all stats to single file
     outfile = None
     if args.output:
         outfile = open(args.output, 'w')
-        print(f"Writing faculty stats to {args.output}", file=sys.stderr)
+        print(f"Writing stats to {args.output}", file=sys.stderr)
 
+    # Output faculty stats
     for attr, label in collate_by.items():
         print(f"\nStatistics collated by {label}:", file=sys.stderr)
         for stats_dict in stats_by_attr[attr].values():
             calculate_final_efficiencies(stats_dict)
         output_csv(stats_by_attr[attr], label, outfile)
 
-    if outfile:
-        outfile.close()
-
-    # Output global stats to separate file
+    # Append global stats to same file
     if use_global:
         print("\nGlobal statistics:", file=sys.stderr)
         for stats_dict in global_stats.values():
             calculate_final_efficiencies(stats_dict)
+        # Use same label as faculty stats, append without header
+        label = list(collate_by.values())[0] if collate_by else "faculty"
+        output_csv(global_stats, label, outfile, include_header=False)
 
-        if args.output:
-            global_output = args.output.replace('.csv', '_global.csv')
-            if global_output == args.output:
-                global_output = args.output + '_global'
-            with open(global_output, 'w') as f:
-                output_csv(global_stats, None, f)
-            print(f"Global stats saved to {global_output}", file=sys.stderr)
-        else:
-            output_csv(global_stats, None)
+    if outfile:
+        outfile.close()
 
 
 if __name__ == "__main__":
