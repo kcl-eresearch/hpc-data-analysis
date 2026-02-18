@@ -1,0 +1,316 @@
+================================================================================
+PART 1: Sample submit_line values (Jan 2025)
+================================================================================
+
+--- 10 jobs WITH a batch step (id_step = -5) ---
+  job 22940971: sbatch run_r.sh
+  job 22754067: sbatch .command.run
+  job 22608140: sbatch .command.run
+  job 22848404: sbatch run_one.sh
+  job 22766159: sbatch .command.run
+  job 22951824: sbatch run_cgwas_array.sh
+  job 22771621: sbatch -p nmes_cpu get.sh
+  job 22825653: sbatch run_one.sh
+  job 22780214: sbatch run_one.sh
+  job 22711894: sbatch twas_array.sh
+
+--- 10 jobs WITHOUT a batch step ---
+  job 22617223: sbatch .command.run
+  job 23011845: srun -p atherton_gpu --pty /bin/bash
+  job 23028087: srun -p atherton_gpu --pty /bin/bash -l
+  job 22685649: srun -p gpu -N 1 --time 01:00:00 --ntasks 1 --cpus-per-task 4 --mem-per-cpu=20000 --gres=gpu:1 -C a100 --pty /bin/bash
+  job 22808929: sbatch check_users_k2362804.sh
+  job 22927580: srun --job-name=slurm4_job -p interruptible_gpu -n 10 --mem-per-cpu=3000 --gres=gpu:4 -C h100 --time=24:00:00 --pty /bin/bash
+  job 22910846: srun -p gpu -n 4 --mem 40GB --gres gpu:1 -C a100 --time 4:00:00 --pty /bin/bash
+  job 22619914: srun -p klic_gpu --constraint zen2 -n 1 --gres=gpu:1 -t 1-23:59:59 --pty /bin/bash
+  job 22900147: srun -p cpu --ntasks=10 --mem-per-cpu=5GB --time 240 --pty /bin/bash
+  job 22772695: sbatch check_users_k21169522.sh
+
+================================================================================
+PART 2: Submission command distribution (Jan 2025)
+================================================================================
+
+  Total jobs in Jan 2025: 452336
+  Jobs with submit_line: 452336
+  Jobs with NULL/empty submit_line: 0
+
+  command                              count         %
+  ------------------------------  ----------  --------
+  sbatch                              447298    98.89%
+  srun                                  4970     1.10%
+  salloc                                  68     0.02%
+
+================================================================================
+PART 3: Interactive job detection via submit_line
+================================================================================
+
+  Jobs with '--pty' in submit_line: 4935
+  Jobs starting with 'srun': 4970
+
+  Sample submit_line values with '--pty':
+    job 22927101: srun -p he_gpu -w erc-hpc-comp191 --time 2-00:00:00 --gres=gpu:1 -c 5 --mem-per-cpu=3000 -C a100_80g --pty /bin/bash
+    job 22632960: srun -n 12 --mem 122880 -p smi_cdt_gpu --gres=gpu:4g.24gb:1 --pty /bin/bash
+    job 22851832: srun --mem=64GB --ntasks=2 --gres=gpu -p robinson_gpu --pty /bin/bash
+    job 22675022: srun -p klic_gpu -n 1 --mem 50000 --time=2-00:00 --gres=gpu:1 --pty /bin/bash --constraint h100
+    job 22926414: srun -p gpu --gres=gpu:1 --time=4:00:00 --pty /bin/bash -l
+    job 22722604: srun -p nmes_gpu --time=240 --gres=gpu --cpus-per-task=4 --pty /bin/bash
+    job 22904684: srun -p cpu --time 120 --pty /bin/bash -l
+    job 22613706: srun -p gpu --time 60 --gres=gpu:3 --pty /bin/bash -l
+    job 23049568: srun -p interruptible_gpu -n 10 --mem-per-cpu=3000 --gres=gpu:1 -C a100 --pty /bin/bash
+    job 22910365: srun --partition gpu --mem 128G --cpus-per-task 32 --gres=gpu --time=0-4:00 --pty /bin/bash
+    job 22769237: srun -p interruptible_gpu --gres gpu --pty /bin/bash -l
+    job 22602811: srun -p cpu --time 120:00 --pty /bin/bash
+    job 22930396: srun -p cpu --pty --cpus-per-task 5 --mem=10000 --time 3:00:00 /bin/bash
+    job 23012137: srun -p cpu --time 60 --pty /bin/bash -l
+    job 22927576: srun -p cpu -n 1 --mem=3G --time=04:00:00 --pty /bin/bash
+    job 22623266: srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+    job 23046832: srun --partition=cpu --mem=32G --time=4:00:00 --pty bash
+    job 23029836: srun -p interruptible_cpu --mem=10GB --pty /bin/bash
+    job 22965507: srun -p interruptible_gpu -n 6 --mem-per-cpu=25000 --gres=gpu:2 --time=24:00:00 --exclude=erc-hpc-comp[110,177,194,054,175,176] --pty /bin/bash
+    job 22943442: srun -p interruptible_gpu -n 6 --mem-per-cpu=25000 --gres=gpu:4 --time=24:00:00 --exclude=erc-hpc-comp[110,177,194,054,176,175] --pty /bin/bash
+
+  Cross-reference: --pty jobs that also have interactive step (id_step = -6):
+    Count: 0
+
+  Cross-reference: --pty jobs that do NOT have interactive step (id_step = -6):
+    Count: 4935
+
+================================================================================
+PART 4: --ntasks extraction from submit_line
+================================================================================
+
+  Jobs with '--ntasks' or '-n <num>' in submit_line: 39212
+
+  Sample submit_line values with '--ntasks':
+    job 23047649: srun -p nd_bioinformatics_cpu --ntasks 8 --mem 64000 --pty /bin/bash
+    job 22852336: srun -p gpu -N 1 --time 04:00:00 --ntasks 1 --cpus-per-task 8 --mem-per-cpu=20000 --gres=gpu:1 -C a100 --pty /bin/bash
+    job 23011580: srun --mem=64GB --ntasks=2 --gres=gpu -p robinson_gpu --pty /bin/bash
+    job 22607344: sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_prj_sgdp_nanopore.job
+    job 22607386: sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_prj_cortical_imaging.job
+    job 22851759: srun --partition cpu --time 01:00:00 --ntasks 4 --pty /bin/bash -l
+    job 22685686: srun -p gpu -N 1 --time 01:00:00 --ntasks 1 --cpus-per-task 4 --mem-per-cpu=20000 --gres=gpu:1 -C a100 --pty /bin/bash
+    job 22851636: srun --nodes=4 --ntasks 8 --export=ALL --time=05:00:00 --pty /bin/bash
+    job 22730818: srun --partition=nd_bioinformatics_cpu,cpu,interruptible_cpu --ntasks=1 --cpus-per-task=2 --mem=4G --time=0-01:00:00 --pty /bin/bash -l
+    job 22956349: srun --nodes=4 --ntasks 8 --export=ALL --time=10:00:00 --pty /bin/bash
+    job 22869794: srun -p gpu -N 1 --time 04:00:00 --ntasks 1 --cpus-per-task 8 --mem-per-cpu=20000 --gres=gpu:1 -C a100 --pty /bin/bash
+    job 22651024: sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=60 -p ceph_recovery /users/hpcsys/ceph_recovery/jobs/msrsync/msrsync_prj_atherton_group_processing.job
+    job 22912001: srun --partition=msc_appbio --time=02:00:00 --ntasks=1 --cpus-per-task=4 --mem=16G --pty bash
+    job 22849344: srun --mem=64GB --ntasks=2 --gres=gpu -p robinson_gpu --pty /bin/bash
+    job 22607373: sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_prj_bell.job
+
+  Sample submit_line values with '-n <num>' (short form):
+    job 22863222: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-119829.err -o log/Pathofact-119829.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-HMM_correct_format_vir.119829
+    job 22854272: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-46440.err -o log/Pathofact-46440.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-run_HMM_vir.46440
+    job 22903601: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-370191.err -o log/Pathofact-370191.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.368887pa/PathoFact-run_HMM_vir.370191
+    job 22902195: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-366722.err -o log/Pathofact-366722.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.368887pa/PathoFact-run_HMM_vir.366722
+    job 22895564: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-325245.err -o log/Pathofact-325245.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.368887pa/PathoFact-HMM_correct_format_vir.325245
+    job 22901278: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-356931.err -o log/Pathofact-356931.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.368887pa/PathoFact-run_HMM_vir.356931
+    job 22857275: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-83836.err -o log/Pathofact-83836.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-run_HMM_vir.83836
+    job 22689525: srun -p cllm_gpu -n 4 --mem 80GB --gres gpu:1 -C a100 --time 48:00:00 --pty /bin/bash
+    job 22862586: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-107812.err -o log/Pathofact-107812.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-HMM_correct_format_vir.107812
+    job 22893072: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-27741.err -o log/Pathofact-27741.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.368887pa/PathoFact-HMM_VIR_classification.27741
+    job 22927204: sbatch --array=1-36 -p cpu -n 3 --mem-per-cpu 2048 array_simulation.sh
+    job 22877144: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-224270.err -o log/Pathofact-224270.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.368887pa/PathoFact-run_HMM_vir.224270
+    job 22854703: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-52645.err -o log/Pathofact-52645.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-run_HMM_vir.52645
+    job 22853406: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-14520.err -o log/Pathofact-14520.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-Prodigal.14520
+    job 22863537: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-112910.err -o log/Pathofact-112910.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-run_HMM_vir.112910
+
+  Distribution of --ntasks values (parsed from submit_line):
+     ntasks value       count
+  ---------------  ----------
+                1       35882
+                2         629
+                3         485
+                6         397
+                8         362
+                4         347
+                5         328
+               10         237
+               32         106
+               16          81
+               12          67
+              100          51
+               24          36
+                7          26
+               20          13
+               64          10
+               18           6
+               96           3
+              128           2
+               40           1
+
+================================================================================
+PART 5: --cpus-per-task extraction from submit_line
+================================================================================
+
+  Jobs with '--cpus-per-task' or '-c <num>' in submit_line: 67018
+
+  Sample submit_line values with '--cpus-per-task':
+    job 22650983: srun -p interruptible_cpu --cpus-per-task=4 --mem=4G --time=02:00:00 --pty /bin/bash -l
+    job 23050815: /usr/bin/sbatch -D /users/k20122072/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/25fabcbc-3d44-41c5-8b65-34a3f64cfdf3 --mail-type BEGIN -J ondemand/sys/dashboard/sys/jupyter_advanced -o /users/k20122072/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/25fabcbc-3d44-41c5-8b65-34a3f64cfdf3/output.log -p gpu -t 04:00:00 --export ALL --cpus-per-task=1 --mem=4G --gres=gpu:4 --parsable -M create
+    job 22833130: /usr/bin/sbatch -D /users/k2260673/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/5026f070-65d5-4297-8b2d-cb3f3e0ae2a6 --mail-type BEGIN -J ondemand/sys/dashboard/sys/jupyter_advanced -o /users/k2260673/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/5026f070-65d5-4297-8b2d-cb3f3e0ae2a6/output.log -p celgene_cpu -t 04:00:00 --export ALL --cpus-per-task=1 --mem=100G --gres=gpu:0 --parsable -M create
+    job 22897029: srun -p gpu -N 1 --nodelist erc-hpc-vm012,erc-hpc-vm013,erc-hpc-vm015,erc-hpc-vm016 --time 04:00:00 --ntasks 1 --cpus-per-task 8 --mem-per-cpu=20000 --gres=gpu:1 -C a100 --pty /bin/bash
+    job 23032295: srun -p cpu --pty --cpus-per-task 1 --mem=10000 --time 1:00:00 /bin/bash
+    job 22766279: /usr/bin/sbatch -D /users/k19054952/ondemand/data/sys/dashboard/batch_connect/sys/jupyter/output/d392931f-bcd0-40ca-aedf-3781cfca1ebb --mail-type BEGIN -J ondemand/sys/dashboard/sys/jupyter -o /users/k19054952/ondemand/data/sys/dashboard/batch_connect/sys/jupyter/output/d392931f-bcd0-40ca-aedf-3781cfca1ebb/output.log -p cpu -t 01:00:00 --export ALL --cpus-per-task=1 --mem=64G --gres=gpu:0 --parsable -M create
+    job 23031868: /usr/bin/sbatch -D /users/k20122072/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/e653a231-60a3-4375-9379-1b9295a5d0ee --mail-type BEGIN -J ondemand/sys/dashboard/sys/jupyter_advanced -o /users/k20122072/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/e653a231-60a3-4375-9379-1b9295a5d0ee/output.log -p gpu -t 04:00:00 --export ALL --cpus-per-task=1 --mem=4G --gres=gpu:4 --parsable -M create
+    job 22762825: srun -p cpu --pty -t 4:00:00 --mem=60GB --ntasks=4 --nodes=1 --cpus-per-task=1 /bin/bash
+    job 22966499: sbatch --mem 128G --cpus-per-task 24 -p klic_gpu --gres gpu:2 --constraint=h100 script_train.sh
+    job 22871603: srun -p gpu -N 1 --nodelist=erc-hpc-vm012,erc-hpc-vm013,erc-hpc-vm015,erc-hpc-vm016 --time 04:00:00 --ntasks 1 --cpus-per-task 8 --mem-per-cpu=20000 --gres=gpu:1 -C a100 --pty /bin/bash
+    job 23051003: srun --partition klic_gpu --mem 128G --cpus-per-task 32 --gres gpu --constraint=h100 --pty --time=0-24:00 /bin/bash
+    job 22623267: srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+    job 22707104: srun -p gpu -N 1 --time 02:00:00 --ntasks 1 --cpus-per-task 4 --mem-per-cpu=20000 --gres=gpu:2 -C a100 --pty /bin/bash
+    job 23024456: /usr/bin/sbatch -D /users/k20122072/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/14e7615e-a0f7-493c-a1cb-3129487d67cd --mail-type BEGIN -J ondemand/sys/dashboard/sys/jupyter_advanced -o /users/k20122072/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/14e7615e-a0f7-493c-a1cb-3129487d67cd/output.log -p gpu -t 04:00:00 --export ALL --cpus-per-task=1 --mem=4G --gres=gpu:4 --parsable -M create
+    job 22916421: /usr/bin/sbatch -D /users/k2480087/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/d508a427-ebc2-4804-872d-ef7b6da613e7 -J ondemand/sys/dashboard/sys/jupyter_advanced -o /users/k2480087/ondemand/data/sys/dashboard/batch_connect/sys/jupyter_advanced/output/d508a427-ebc2-4804-872d-ef7b6da613e7/output.log -p cpu -t 01:00:00 --export ALL --cpus-per-task=1 --mem=100G --gres=gpu:0 --parsable -M create
+
+  Sample submit_line values with '-c <num>' (short form):
+    job 22996058: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-9286.err -o log/Pathofact-9286.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-HMM_correct_format.9286
+    job 23045477: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-11467.err -o log/Pathofact-11467.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.lml3jfxl/PathoFact-CTDT.11467
+    job 23021778: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-5996.err -o log/Pathofact-5996.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-signalp_gramn.5996
+    job 22857074: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-77081.err -o log/Pathofact-77081.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-HMM_correct_format_vir.77081
+    job 23003520: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-401.err -o log/Pathofact-401.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-select.401
+    job 23026418: sbatch --parsable -c 12 --mem=16G -t 10:00:00 -D . -e log/Pathofact-6632.err -o log/Pathofact-6632.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.lml3jfxl/PathoFact-run_HMM_vir.6632
+    job 23008694: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-20432.err -o log/Pathofact-20432.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-join_matrix.20432
+    job 23027392: sbatch --parsable -c 12 --mem=16G -t 10:00:00 -D . -e log/Pathofact-11200.err -o log/Pathofact-11200.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.lml3jfxl/PathoFact-run_HMM_vir.11200
+    job 22855214: sbatch --parsable -n 1 -c 8 --mem=32G -t 10:00:00 -D . -e log/Pathofact-26510.err -o log/Pathofact-26510.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.slu12d_k/PathoFact-generate_ID.26510
+    job 23022684: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-19682.err -o log/Pathofact-19682.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-signalp_gramp.19682
+    job 23018903: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-17337.err -o log/Pathofact-17337.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-signalp_gramn.17337
+    job 23046210: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-7535.err -o log/Pathofact-7535.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.lml3jfxl/PathoFact-CTDD.7535
+    job 23046127: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-7513.err -o log/Pathofact-7513.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.lml3jfxl/PathoFact-join_matrix.7513
+    job 23049016: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-9917.err -o log/Pathofact-9917.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.lml3jfxl/PathoFact-run_RGI.9917
+    job 23005978: sbatch --parsable -c 1 --mem=16G -t 10:00:00 -D . -e log/Pathofact-10261.err -o log/Pathofact-10261.out /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.kv__5fb7/PathoFact-AAC.10261
+
+  Distribution of --cpus-per-task values (parsed from submit_line):
+    cpus-per-task       count
+  ---------------  ----------
+                8       34142
+                1       27770
+               12        2257
+                4        1564
+               10         297
+                2         256
+               32         169
+               24          97
+               64          81
+               30          71
+               16          67
+              124          62
+                6          50
+               20          39
+               60          38
+                5          27
+                3          17
+              128           4
+               38           4
+               50           4
+
+================================================================================
+PART 6: Cross-tabulation (command x --ntasks x --cpus-per-task)
+================================================================================
+
+  command          --ntasks    --cpus-per-task         count
+  ---------------  ----------  -----------------  ----------
+  sbatch           no          no                     379190
+  sbatch           yes         yes                     34552
+  sbatch           no          yes                     31581
+  srun             yes         no                       2140
+  sbatch           yes         no                       1975
+  srun             no          no                       1970
+  srun             no          yes                       467
+  srun             yes         yes                       393
+  salloc           yes         no                         36
+  salloc           yes         yes                        13
+  salloc           no          yes                        12
+  salloc           no          no                          7
+
+  Summary:
+    Neither --ntasks nor --cpus-per-task:   381167 (84.3%)
+    --ntasks only:                            4151 (0.9%)
+    --cpus-per-task only:                     32060 (7.1%)
+    Both:                                     34958 (7.7%)
+
+================================================================================
+PART 7: Comparison with existing fields (cpus_req, tres_req)
+================================================================================
+
+--- Jobs with --ntasks in submit_line vs cpus_req ---
+  Total sampled: 500
+  parsed_ntasks == cpus_req: 308
+  parsed_ntasks != cpus_req: 191
+  Parse failures: 1
+
+  Sample mismatches (ntasks vs cpus_req):
+           job   ntasks   cpus_req  tres_req / submit_line
+      22604254        1         16  tres_req=1=16,2=16000,4=1,5=16
+                                    submit_line=sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=16 -p ceph_recovery rsync_grp_hodgkinsonlab_BATCH1.job
+      22604475        1         16  tres_req=1=16,2=16000,4=1,5=16
+                                    submit_line=sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=16 -p ceph_recovery rsync_grp_hodgkinsonlab_BATCH2.job
+      22605642        1        124  tres_req=1=124,2=1536000,4=1,5=124
+                                    submit_line=srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+      22605649        1        124  tres_req=1=124,2=1536000,4=1,5=124
+                                    submit_line=srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+      22605650        1        124  tres_req=1=124,2=1536000,4=1,5=124
+                                    submit_line=srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+      22605651        1        124  tres_req=1=124,2=1536000,4=1,5=124
+                                    submit_line=srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+      22605658        1        124  tres_req=1=124,2=1536000,4=1,5=124
+                                    submit_line=srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+      22606789        1        124  tres_req=1=124,2=1536000,4=1,5=124
+                                    submit_line=srun -p interruptible_cpu -n 1 -N 1 --time=1-00:00:00 --mem=1500GB --cpus-per-task=124 --exclusive --pty /bin/bash
+      22606851        1         28  tres_req=1=28,2=102400,4=1,5=28
+                                    submit_line=srun -p nmes_cpu -n 1 -N 1 --time=4:00:00 --exclusive --cpus-per-task=28 --mem=100GB --pty /bin/bash
+      22607284        1          2  tres_req=1=2,2=4096,4=1,5=2
+                                    submit_line=srun --partition=nd_bioinformatics_cpu,cpu,interruptible_cpu --ntasks=1 --cpus-per-task=2 --mem=4G --time=04:00:00 --pty /bin/bash -l
+      22607344        1         24  tres_req=1=24,2=24000,4=1,5=24
+                                    submit_line=sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_prj_sgdp_nanopore.job
+      22607354        1          2  tres_req=1=2,2=4096,4=1,5=2
+                                    submit_line=srun --partition=nd_bioinformatics_cpu,cpu,interruptible_cpu --ntasks=1 --cpus-per-task=2 --mem=4G --time=04:00:00 --pty /bin/bash -l
+      22607364        1         24  tres_req=1=24,2=24000,4=1,5=24
+                                    submit_line=sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_grp_epap.job
+      22607365        1         24  tres_req=1=24,2=24000,4=1,5=24
+                                    submit_line=sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_grp_grv_weber.job
+      22607366        1         24  tres_req=1=24,2=24000,4=1,5=24
+                                    submit_line=sbatch --ntasks=1 --ntasks-per-node=1 --cpus-per-task=24 -p ceph_recovery msrsync_grp_hodgkinsonlab_BATCH2.job
+
+--- Jobs with --cpus-per-task in submit_line vs cpus_req ---
+  Total sampled: 500
+  parsed_cpus_per_task == cpus_req: 448
+  parsed_cpus_per_task != cpus_req: 52
+  Parse failures: 0
+
+  Sample mismatches (cpus-per-task vs cpus_req):
+           job      cpt   cpus_req  tres_req / submit_line
+      22623676        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15990.err -o log/Pathofact-15990Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15990
+      22623677        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15310.err -o log/Pathofact-15310Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15310
+      22623678        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15334.err -o log/Pathofact-15334Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15334
+      22623679        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-16198.err -o log/Pathofact-16198Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.16198
+      22623680        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15094.err -o log/Pathofact-15094Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15094
+      22623681        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-16206.err -o log/Pathofact-16206Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.16206
+      22623682        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15542.err -o log/Pathofact-15542Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15542
+      22623683        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15054.err -o log/Pathofact-15054Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15054
+      22623684        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-15326.err -o log/Pathofact-15326Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.15326
+      22623685        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-16246.err -o log/Pathofact-16246Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.16246
+      22623686        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-14182.err -o log/Pathofact-14182Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.14182
+      22623687        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-16294.err -o log/Pathofact-16294Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.16294
+      22623688        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-14806.err -o log/Pathofact-14806Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.14806
+      22623689        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-16278.err -o log/Pathofact-16278Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.16278
+      22623690        2        200  tres_req=1=200,2=655360,4=2,5=200
+                                    submit_line=sbatch --parsable -N 2 -n 100 -c 2 --mem=320G -t 48:00:00 -D . -e log/Pathofact-16366.err -o log/Pathofact-16366Pathofact /scratch_tmp/prj/chmi/sysbiolab/Elle/HSC/PathoFact/.snakemake/tmp.wx1zjd9q/PathoFact-run_VirSorter.16366
+
+--- Jobs with BOTH --ntasks and --cpus-per-task: ntasks*cpt vs cpus_req ---
+  Jobs with both flags: 500
+  ntasks * cpus-per-task == cpus_req: 427
+  ntasks * cpus-per-task != cpus_req: 0
