@@ -54,6 +54,9 @@ def init_stats_dict():
         # State counts for non-success efficiency-relevant states
         "count_timeout": 0,
         "count_out_of_memory": 0,
+        "count_interactive": 0,
+        "count_with_ntasks": 0,
+        "count_with_cpus_per_task": 0,
 
         # Resource totals (only for INCLUDED_STATES jobs)
         "total_elapsed": 0,
@@ -106,6 +109,14 @@ def update_stats(metrics, stats, collate_key):
     elif is_failed:
         s["job_count_failed"] += 1
     # Note: CANCELLED jobs count in job_count but not in success or failed
+
+    # Submit-line derived counts (apply to all jobs)
+    if metrics.get("submit_line_interactive"):
+        s["count_interactive"] += 1
+    if metrics.get("submit_line_ntasks") is not None:
+        s["count_with_ntasks"] += 1
+    if metrics.get("submit_line_cpus_per_task") is not None:
+        s["count_with_cpus_per_task"] += 1
 
     # Only INCLUDED_STATES jobs: state counts, resource totals, efficiency metrics
     if not include_in_efficiency:
@@ -190,6 +201,7 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
         # Job counts
         "job_count", "job_count_success", "job_count_failed",
         "count_timeout", "count_out_of_memory",
+        "count_interactive", "count_with_ntasks", "count_with_cpus_per_task",
         # Resource totals and averages
         "total_elapsed_sec", "avg_elapsed_sec",
         "total_cpu_sec", "avg_cpu_sec",
@@ -219,6 +231,9 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
             format_value(s["job_count_failed"]),
             format_value(s["count_timeout"]),
             format_value(s["count_out_of_memory"]),
+            format_value(s["count_interactive"]),
+            format_value(s["count_with_ntasks"]),
+            format_value(s["count_with_cpus_per_task"]),
             # Resource totals and averages
             format_value(s["total_elapsed"]),
             format_value(s["avg_elapsed"]),

@@ -54,9 +54,14 @@ from pathlib import Path
 import mysql.connector
 import yaml
 
-# Paths relative to script location (allows running from any directory)
-SCRIPT_DIR = Path(__file__).parent
-PROJECT_ROOT = SCRIPT_DIR.parent
+# Find project root by searching upward for config.yaml
+SCRIPT_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPT_DIR
+while not (PROJECT_ROOT / "config.yaml").exists():
+    if PROJECT_ROOT == PROJECT_ROOT.parent:
+        sys.exit("ERROR: Could not find config.yaml in any parent directory.")
+    PROJECT_ROOT = PROJECT_ROOT.parent
+
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
 OUTPUT_FILE = SCRIPT_DIR / "output_job_flags.txt"
 
@@ -189,11 +194,11 @@ with open(OUTPUT_FILE, 'w') as f:
     out("=" * 80)
     out()
     cursor.execute("""
-        SELECT partition, COUNT(*) as cnt
+        SELECT `partition`, COUNT(*) as cnt
         FROM create_job_table
         WHERE time_submit >= UNIX_TIMESTAMP('2025-01-01')
           AND time_submit < UNIX_TIMESTAMP('2025-02-01')
-        GROUP BY partition
+        GROUP BY `partition`
         ORDER BY cnt DESC
     """)
     out(f"  {'partition':<30}  {'count':>12}")
@@ -223,7 +228,7 @@ with open(OUTPUT_FILE, 'w') as f:
     for flags_val in top_flags:
         out(f"\n--- Jobs with flags = {flags_val} (0x{flags_val:08x}) ---")
         cursor.execute("""
-            SELECT id_job, partition, timelimit, cpus_req, job_name
+            SELECT id_job, `partition`, timelimit, cpus_req, job_name
             FROM create_job_table
             WHERE flags = %s
               AND time_submit >= UNIX_TIMESTAMP('2025-01-01')

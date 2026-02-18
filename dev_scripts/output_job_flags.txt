@@ -1,0 +1,130 @@
+================================================================================
+PART 1: Distribution of flags values
+================================================================================
+
+Top 30 most common flags values (recent jobs, Jan 2025):
+       flags (decimal)      flags (hex)         count         %
+                    24             0x18        257170    56.85%
+                    20             0x14        184085    40.70%
+                    16             0x10         11013     2.43%
+                    28             0x1c            35     0.01%
+                    18             0x12            33     0.01%
+
+  Total jobs in sample: 452336
+
+================================================================================
+PART 2: Bit analysis of common flag values
+================================================================================
+
+Flags = 16 (0x00000010):
+    - GRES_ENFORCE_BIND
+
+Flags = 18 (0x00000012):
+    - NO_KILL_INV_DEP
+    - GRES_ENFORCE_BIND
+
+Flags = 20 (0x00000014):
+    - HAS_STATE_DIR
+    - GRES_ENFORCE_BIND
+
+Flags = 24 (0x00000018):
+    - BACKFILL_TEST
+    - GRES_ENFORCE_BIND
+
+Flags = 28 (0x0000001c):
+    - HAS_STATE_DIR
+    - BACKFILL_TEST
+    - GRES_ENFORCE_BIND
+
+================================================================================
+PART 3: Jobs with 'interactive' step (id_step = -6)
+================================================================================
+
+Checking if jobs with interactive steps have distinct flag patterns...
+       flags (decimal)      flags (hex)     job_count
+                     2              0x2             1
+                    24             0x18             1
+
+================================================================================
+PART 4: Jobs by partition (looking for interactive partitions)
+================================================================================
+
+  partition                              count
+  cpu                                   141009
+  nmes_cpu                              108661
+  nd_bioinformatics_cpu                  74492
+  interruptible_cpu                      73621
+  ceph_recovery                          10560
+  biomed_a30_gpu                          8475
+  nmes_gpu                                6477
+  interruptible_gpu                       5349
+  neurohack_cpu                           4553
+  gpu                                     4364
+  slam_cpu                                4006
+  biomed_a100_gpu                         2531
+  celgene_cpu                             2346
+  interruptible_cpu,cpu,nd_bioinformatics_cpu           857
+  simeone_gpu                              766
+  patching                                 578
+  build                                    546
+  klic_gpu                                 468
+  mathematics_cpu                          406
+  robinson_gpu                             379
+  gromov_cpu                               308
+  he_gpu                                   228
+  msc_appbio                               221
+  matta_gpu                                211
+  shi_gpu                                  175
+  luo_gpu                                  144
+  interruptible_gpu,biomed_a30_gpu,gpu           129
+  cllm_gpu                                 118
+  morty_cpu                                 43
+  chem_gpu                                  38
+  atherton_gpu                              36
+  interruptible_cpu,cpu,nmes_cpu            34
+  celgene_gpu                               34
+  molteni_cpu                               32
+  long_cpu                                  24
+  smi_cdt_gpu                               24
+  loveday_gpu                               21
+  drive_cdt_gpu                             16
+  interruptible_gpu,biomed_a100_gpu,gpu            12
+  cgatt_cpu                                 10
+  cloud_eduhub_testone                       6
+  neurohack_cpu,cpu                          6
+  cpu,nd_bioinformatics_cpu                  5
+  interruptible_cpu,nd_bioinformatics_cpu,cpu             4
+  simpson_cpu                                4
+  long_gpu                                   4
+  cpu,neurohack_cpu                          4
+  highp_cpu                                  1
+
+================================================================================
+PART 5: Sample jobs with common flag values
+================================================================================
+
+Comparing job characteristics for different flag values:
+
+--- Jobs with flags = 24 (0x00000018) ---
+        id_job  partition              timelimit   cpus  job_name
+      22711584  interruptible_cpu            150      1  twas_array
+      23000285  nmes_cpu                     480      1  run_sim
+      22843330  nmes_cpu                    1440      1  250116_qpdp,d=2,L=256,EPS=0.80,SEED=437
+      22683567  nd_bioinformatics_cpu           5      1  nf-progressive_stats_(189)
+      22684387  interruptible_gpu             15      4  nf-wf_dorado_dorado_(470)
+
+--- Jobs with flags = 20 (0x00000014) ---
+        id_job  partition              timelimit   cpus  job_name
+      22944966  patching              4294967295      1  autopatch_erc-hpc-comp081
+      22917734  cpu                           60      1  bash
+      22976107  nmes_cpu                     300      1  run_sim
+      22827096  nmes_cpu                    1440      1  250116_qpdp,d=2,L=256,EPS=1.00,SEED=233
+      22780144  nmes_cpu                    1440      1  250116_qpdp,d=2,L=64,EPS=0.30,SEED=27
+
+--- Jobs with flags = 16 (0x00000010) ---
+        id_job  partition              timelimit   cpus  job_name
+      22772338  ceph_recovery         4294967295     32  check_users_k1815665.sh
+      22962964  cpu                         1440      1  download_regulatory_data.sh
+      22862051  cpu                         1800      4  Srf10cv
+      22965879  cpu                          600     12  PathoFact-run_HMM_vir.5252
+      22678181  gpu                         2880      1  25inboxC3M1_bash.sh

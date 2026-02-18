@@ -10,6 +10,7 @@ Contains common functions for:
 - Slurm job state constants
 """
 
+import re
 import sys
 import yaml
 import mysql.connector
@@ -134,6 +135,41 @@ def parse_tres_value(tres_string, tres_id):
     return 0
 
 
+def parse_ntasks_from_submit_line(submit_line):
+    """Parse --ntasks / -n value from a Slurm submit_line string.
+
+    Returns:
+        int or None if not found.
+    """
+    if not submit_line:
+        return None
+    m = re.search(r'(?:--ntasks[=\s]|-n\s)(\d+)', submit_line)
+    return int(m.group(1)) if m else None
+
+
+def parse_cpus_per_task_from_submit_line(submit_line):
+    """Parse --cpus-per-task / -c value from a Slurm submit_line string.
+
+    Returns:
+        int or None if not found.
+    """
+    if not submit_line:
+        return None
+    m = re.search(r'(?:--cpus-per-task[=\s]|-c\s)(\d+)', submit_line)
+    return int(m.group(1)) if m else None
+
+
+def detect_interactive_from_submit_line(submit_line):
+    """Detect interactive jobs by checking for --pty in submit_line.
+
+    Returns:
+        True if --pty is present, False otherwise.
+    """
+    if not submit_line:
+        return False
+    return '--pty' in submit_line
+
+
 # =============================================================================
 # Database Connection
 # =============================================================================
@@ -164,7 +200,7 @@ def discover_special_steps(cursor):
     double-counting with regular srun steps.
 
     Returns:
-        dict mapping step_name to id_step, e.g. {'batch': -5, 'interactive': -6}
+        dict mapping step_name to id_step (values are cluster-specific)
     """
     cursor.execute("""
         SELECT DISTINCT id_step, step_name
@@ -188,25 +224,31 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
     without srun steps (avoids double-counting batch + srun steps).
     Memory: extracts numeric memory value from TRES string per step,
     then takes the numeric MAX (not string MAX).
-    Submission type: detected from presence of batch step (-5) vs interactive step (-6).
+    Submission type: detected from presence of batch step vs interactive step.
 
     Args:
         cursor: MySQL cursor
         since_ts: Start timestamp (Unix)
         until_ts: End timestamp (Unix)
-        special_steps: dict from discover_special_steps(), e.g. {'batch': -5}
+        special_steps: dict from discover_special_steps(), e.g. {'batch': <id>}
 
     Returns:
         cursor with query results. Each row contains:
         (job_db_inx, id_job, username, state, exit_code, time_submit,
          time_start, time_end, cpus_req, tres_req, tres_alloc, timelimit, nodes_alloc,
          total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
-         max_mem_bytes, submission_type, step_count, n_tasks)
+         max_mem_bytes, submission_type, step_count, n_tasks, submit_line)
     """
     # Build exclusion list from all discovered special steps
     exclude_ids = ", ".join(str(sid) for sid in special_steps.values())
-    batch_id = special_steps.get("batch", -5)
-    interactive_id = special_steps.get("interactive", -6)
+    if "batch" not in special_steps:
+        sys.exit("ERROR: discover_special_steps() did not find a 'batch' step. "
+                 "Cannot proceed without knowing the batch step ID.")
+    if "interactive" not in special_steps:
+        sys.exit("ERROR: discover_special_steps() did not find an 'interactive' step. "
+                 "Cannot proceed without knowing the interactive step ID.")
+    batch_id = special_steps["batch"]
+    interactive_id = special_steps["interactive"]
 
     query = f"""
         SELECT
@@ -263,7 +305,8 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
             COUNT(DISTINCT s.id_step) AS step_count,
             MAX(CASE WHEN s.id_step = {batch_id} THEN s.task_cnt
                      WHEN s.id_step = {interactive_id} THEN s.task_cnt
-                     ELSE NULL END) AS n_tasks
+                     ELSE NULL END) AS n_tasks,
+            j.submit_line
         FROM create_job_table j
         JOIN create_assoc_table a ON j.id_assoc = a.id_assoc
         LEFT JOIN create_step_table s ON j.job_db_inx = s.job_db_inx
@@ -298,7 +341,7 @@ def calculate_job_metrics(row):
     (job_db_inx, id_job, username, state, exit_code, time_submit, time_start,
      time_end, cpus_req_col, tres_req, tres_alloc, timelimit, nodes_alloc,
      total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
-     max_mem_bytes, submission_type, step_count, n_tasks) = row
+     max_mem_bytes, submission_type, step_count, n_tasks, submit_line) = row
 
     # Convert types
     time_submit = float(time_submit) if time_submit else 0
@@ -378,6 +421,9 @@ def calculate_job_metrics(row):
         "n_tasks": n_tasks,
         "is_success": is_success,
         "submission_type": submission_type,
+        "submit_line_ntasks": parse_ntasks_from_submit_line(submit_line),
+        "submit_line_cpus_per_task": parse_cpus_per_task_from_submit_line(submit_line),
+        "submit_line_interactive": detect_interactive_from_submit_line(submit_line),
     }
 
 
