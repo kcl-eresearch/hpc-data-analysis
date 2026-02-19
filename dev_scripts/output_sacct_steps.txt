@@ -15,7 +15,7 @@ Special steps have negative id_step values in create_step_table.
 PART 2: Job counts by step pattern (Jan 15, 2025, completed jobs)
 ================================================================================
 
-Categorising based on presence of batch step and srun steps (id_step >= 0).
+Categorising based on presence of batch step (id_step = -5) and regular srun steps (id_step >= 0).
 
   Pattern A (batch step only, no srun):  5472
   Pattern B (srun steps only, no batch):  36
@@ -418,3 +418,26 @@ Questions:
   22762843.batch                  00:00.092             9776K            6         
   22762843.0                      00:00.073             804K             6         
 
+
+================================================================================
+PART 5: CPU time comparison — sacct job-level vs database aggregation
+================================================================================
+
+Comparing sacct's job-level TotalCPU against our database CPU time
+aggregation (same logic as fetch_job_data in slurm_utils.py).
+
+  Pattern    Job ID           sacct (s)        DB (s)    Diff (s)  Result
+  ---------  ------------  ------------  ------------  ----------  ------
+  A          22762400              0.49          0.49       -0.00  MATCH
+  A          22762412         115269.00     115269.90       -0.90  MATCH
+  A          22762437         246786.00     246786.75       -0.75  MATCH
+  A          22762441              0.57          0.57       -0.00  MATCH
+  A          22762460              0.48          0.49       -0.00  MATCH
+  B          22762466             59.55         59.55       -0.00  MATCH
+  B          22762488              2.46          2.46       -0.00  MATCH
+  B          22762563              0.04          0.04       -0.00  MATCH
+  B          22762621           8840.00       8840.27       -0.27  MATCH
+  B          22762633              0.34          0.34       -0.00  MATCH
+  C          22762824              0.18          0.10       +0.08  MATCH
+  C          22762828         220898.00     220887.71      +10.29  MISMATCH
+  C          22762843              0.17          0.07       +0.09  MATCH

@@ -6,12 +6,12 @@ Produces aggregated statistics by faculty (or other LDAP attributes),
 including resource efficiency metrics.
 
 Usage:
-    python3 hpc_stats.py --collate_by st=faculty --since 2025-01-01 --until 2025-02-01
-    python3 hpc_stats.py --collate_by none --since 2025-01-01 --until 2025-02-01  # global stats only
-    python3 hpc_stats.py --collate_by st=faculty --collate_by none --output stats.csv ...  # both
+    python3 hpc_stats.py --collate_by st=faculty --collate_by none --since 2025-01-01 --until 2025-02-01 --output hpc_stats_output.csv
+    # produces: 2025-01-01_2025-02-01_hpc_stats_output.csv
 """
 
 import argparse
+import os
 import re
 import sys
 
@@ -362,8 +362,12 @@ def main():
     # Output all stats to single file
     outfile = None
     if args.output:
-        outfile = open(args.output, 'w')
-        print(f"Writing stats to {args.output}", file=sys.stderr)
+        output_dir = os.path.dirname(args.output)
+        output_base = os.path.basename(args.output)
+        output_path = os.path.join(output_dir, f"{args.since}_{args.until}_{output_base}")
+        outfile = open(output_path, 'w')
+        print(f"# date_range: {args.since} to {args.until}", file=outfile)
+        print(f"Writing stats to {output_path}", file=sys.stderr)
 
     # Output faculty stats
     for attr, label in collate_by.items():

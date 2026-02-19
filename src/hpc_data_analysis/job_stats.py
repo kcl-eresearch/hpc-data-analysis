@@ -6,11 +6,12 @@ Exports per-job efficiency metrics for distribution analysis and visualisation.
 Output is suitable for violin plots, scatter plots, and correlation analysis.
 
 Usage:
-    python3 job_level_metrics.py --since 2025-01-01 --until 2025-02-01 --output jobs.csv
-    python3 job_level_metrics.py --since 2025-01-01 --until 2025-02-01 --output jobs.csv --include-faculty
+    python3 job_level_metrics.py --since 2025-01-01 --until 2025-02-01 --output job_level_metrics.csv
+    # produces: 2025-01-01_2025-02-01_job_level_metrics.csv
 """
 
 import argparse
+import os
 import sys
 
 from hpc_data_analysis.slurm_utils import (
@@ -99,6 +100,11 @@ def main():
     args = parser.parse_args()
     since_ts, until_ts = parse_date_range(args.since, args.until)
 
+    # Build output path with date range prefix
+    output_dir = os.path.dirname(args.output)
+    output_base = os.path.basename(args.output)
+    output_path = os.path.join(output_dir, f"{args.since}_{args.until}_{output_base}")
+
     # Setup LDAP if needed (connection is lazy — made on first lookup)
     ldap_client = None
     ad_config = None
@@ -118,7 +124,8 @@ def main():
     job_count = 0
     included_count = 0
 
-    with open(args.output, 'w') as f:
+    with open(output_path, 'w') as f:
+        print(f"# date_range: {args.since} to {args.until}", file=f)
         write_csv_header(f, include_faculty=args.include_faculty)
 
         for row in fetch_job_data(cursor, since_ts, until_ts, special_steps):
@@ -145,7 +152,7 @@ def main():
     conn.close()
 
     print(f"Processed {job_count} jobs, included {included_count} finished jobs", file=sys.stderr)
-    print(f"Output saved to {args.output}", file=sys.stderr)
+    print(f"Output saved to {output_path}", file=sys.stderr)
 
 
 if __name__ == "__main__":
