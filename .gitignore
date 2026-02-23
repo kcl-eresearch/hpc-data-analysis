@@ -3,7 +3,8 @@ config.yaml
 
 # Output files
 *.csv
-results/
+results/*
+!results/plots/
 original_code/
 
 # Documentation (draft - to review before making public)
