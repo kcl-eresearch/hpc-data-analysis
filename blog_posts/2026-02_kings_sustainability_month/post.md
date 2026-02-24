@@ -14,6 +14,8 @@ using resources efficiently is a sustainability issue. This post analyses
 
 TODO: Summary table — total jobs, mean/median CPU and memory efficiency.
 
+![Job State Distribution](../../results/plots/2026-02_sustainability/job_state_distribution.png)
+
 ![CPU Efficiency Distribution](../../results/plots/2026-02_sustainability/cpu_efficiency_density.png)
 
 ![CPU Efficiency: Single-CPU vs Multi-CPU Jobs](../../results/plots/2026-02_sustainability/cpu_efficiency_density_split.png)
