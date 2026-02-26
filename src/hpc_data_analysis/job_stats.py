@@ -34,9 +34,9 @@ def write_csv_header(outfile, include_faculty=False):
         "submission_type", "step_count",
         "state", "exit_code", "is_success",
         "elapsed_sec", "wait_sec", "timelimit_sec",
-        "cpu_eff_req", "cpu_eff_alloc", "mem_eff", "time_eff",
+        "cpu_eff_req", "cpu_eff_alloc", "mem_eff", "mem_eff_alloc", "time_eff",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
-        "maxrss_bytes", "reqmem_bytes",
+        "maxrss_bytes", "reqmem_bytes", "allocmem_bytes", "mem_type",
         "req_cpus", "alloc_cpus", "n_nodes", "n_tasks",
         "submit_line_ntasks", "submit_line_cpus_per_task", "submit_line_interactive"
     ])
@@ -63,6 +63,7 @@ def write_csv_row(job, outfile, include_faculty=False):
         format_value(job["cpu_eff_req"]),
         format_value(job["cpu_eff_alloc"]),
         format_value(job["mem_eff"]),
+        format_value(job["mem_eff_alloc"]),
         format_value(job["time_eff"]),
         format_value(job["total_cpu_sec"]),
         format_value(job["user_cpu_sec"]),
@@ -70,6 +71,8 @@ def write_csv_row(job, outfile, include_faculty=False):
         format_value(job["user_cpu_pct"]),
         format_value(job["maxrss_bytes"]),
         format_value(job["reqmem_bytes"]),
+        format_value(job.get("allocmem_bytes", 0)),
+        job.get("mem_type", "unknown"),
         str(job["req_cpus"]),
         str(job.get("alloc_cpus", job["req_cpus"])),
         str(job["n_nodes"]),

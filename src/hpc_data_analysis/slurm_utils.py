@@ -236,7 +236,7 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
         cursor with query results. Each row contains:
         (job_db_inx, id_job, username, state, exit_code, time_submit,
          time_start, time_end, cpus_req, tres_req, tres_alloc, timelimit, nodes_alloc,
-         total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
+         mem_req, total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
          max_mem_bytes, submission_type, step_count, n_tasks, submit_line)
     """
     # Build exclusion list from all discovered special steps
@@ -265,6 +265,7 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
             j.tres_alloc,
             j.timelimit,
             j.nodes_alloc,
+            j.mem_req,
             COALESCE(
                 NULLIF(SUM(CASE WHEN s.id_step NOT IN ({exclude_ids})
                                 THEN s.user_sec ELSE 0 END), 0),
@@ -330,9 +331,11 @@ def calculate_job_metrics(row):
         - time_submit, time_start, time_end
         - elapsed_sec, wait_sec, timelimit_sec
         - user_cpu_sec, sys_cpu_sec, total_cpu_sec (all in seconds, including usec)
-        - req_cpus, alloc_cpus, maxrss_bytes, reqmem_bytes
+        - req_cpus, alloc_cpus, maxrss_bytes, reqmem_bytes, allocmem_bytes
         - cpu_eff_req (based on req_cpus), cpu_eff_alloc (based on alloc_cpus)
-        - mem_eff, time_eff (percentages or None)
+        - mem_eff (based on requested mem), mem_eff_alloc (based on allocated mem)
+        - mem_type ('per-cpu' or 'per-node')
+        - time_eff (percentages or None)
         - user_cpu_pct (percentage or None)
         - n_nodes, step_count, n_tasks
         - is_success (bool)
@@ -340,7 +343,7 @@ def calculate_job_metrics(row):
     """
     (job_db_inx, id_job, username, state, exit_code, time_submit, time_start,
      time_end, cpus_req_col, tres_req, tres_alloc, timelimit, nodes_alloc,
-     total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
+     mem_req_raw, total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
      max_mem_bytes, submission_type, step_count, n_tasks, submit_line) = row
 
     # Convert types
@@ -377,12 +380,21 @@ def calculate_job_metrics(row):
     reqmem_mb = parse_tres_value(tres_req, TRES_MEM_ID)
     reqmem = reqmem_mb * 1024 * 1024
 
+    # Allocated memory (from tres_alloc TRES ID 2)
+    allocmem_mb = parse_tres_value(tres_alloc, TRES_MEM_ID)
+    allocmem = allocmem_mb * 1024 * 1024
+
+    # Memory request type (bit 63 of mem_req encodes --mem-per-cpu)
+    mem_req_raw_int = int(mem_req_raw) if mem_req_raw else 0
+    mem_type = 'per-cpu' if (mem_req_raw_int & 0x8000000000000000) else 'per-node'
+
     # Per-job efficiencies
     cpu_requested = elapsed * req_cpus
     cpu_allocated = elapsed * alloc_cpus
     cpu_eff_req = (total_cpu / cpu_requested * 100) if cpu_requested > 0 else None
     cpu_eff_alloc = (total_cpu / cpu_allocated * 100) if cpu_allocated > 0 else None
     mem_eff = (maxrss / reqmem * 100) if reqmem > 0 else None
+    mem_eff_alloc = (maxrss / allocmem * 100) if allocmem > 0 else None
     time_eff = (elapsed / timelimit_sec * 100) if timelimit_sec > 0 else None
 
     # User vs system CPU ratio (now includes microseconds)
@@ -409,11 +421,14 @@ def calculate_job_metrics(row):
         "alloc_cpus": alloc_cpus,
         "maxrss_bytes": maxrss,
         "reqmem_bytes": reqmem,
+        "allocmem_bytes": allocmem,
+        "mem_type": mem_type,
         "cpu_requested": cpu_requested,
         "cpu_allocated": cpu_allocated,
         "cpu_eff_req": cpu_eff_req,
         "cpu_eff_alloc": cpu_eff_alloc,
         "mem_eff": mem_eff,
+        "mem_eff_alloc": mem_eff_alloc,
         "time_eff": time_eff,
         "user_cpu_pct": user_cpu_pct,
         "n_nodes": nodes_alloc,

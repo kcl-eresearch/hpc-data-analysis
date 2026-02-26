@@ -78,11 +78,15 @@ def init_stats_dict():
         "sum_cpu_allocated": 0,
         "sum_job_cpu_eff_alloc": 0,
         "count_cpu_eff_alloc": 0,
-        # For efficiency calculations - memory and time
+        # For efficiency calculations - memory (requested) and time
         "sum_job_mem_eff": 0,
         "sum_job_time_eff": 0,
         "count_mem_eff": 0,
         "count_time_eff": 0,
+        # For efficiency calculations - memory (allocated)
+        "total_allocmem": 0,
+        "sum_job_mem_eff_alloc": 0,
+        "count_mem_eff_alloc": 0,
     }
 
 
@@ -140,9 +144,12 @@ def update_stats(metrics, stats, collate_key):
     s["sum_cpu_requested"] += metrics["cpu_requested"]
     s["sum_cpu_allocated"] += metrics["cpu_allocated"]
 
+    s["total_allocmem"] += metrics.get("allocmem_bytes", 0)
+
     cpu_eff_req = metrics["cpu_eff_req"]
     cpu_eff_alloc = metrics["cpu_eff_alloc"]
     mem_eff = metrics["mem_eff"]
+    mem_eff_alloc = metrics.get("mem_eff_alloc")
     time_eff = metrics["time_eff"]
 
     if cpu_eff_req is not None:
@@ -154,6 +161,9 @@ def update_stats(metrics, stats, collate_key):
     if mem_eff is not None:
         s["sum_job_mem_eff"] += mem_eff
         s["count_mem_eff"] += 1
+    if mem_eff_alloc is not None:
+        s["sum_job_mem_eff_alloc"] += mem_eff_alloc
+        s["count_mem_eff_alloc"] += 1
     if time_eff is not None:
         s["sum_job_time_eff"] += time_eff
         s["count_time_eff"] += 1
@@ -170,11 +180,14 @@ def calculate_final_efficiencies(s):
     # Efficiency metrics - CPU based on allocated CPUs
     s["weighted_cpu_eff_alloc"] = (s["total_cpu"] / s["sum_cpu_allocated"] * 100) if s["sum_cpu_allocated"] > 0 else None
     s["avg_cpu_eff_alloc"] = (s["sum_job_cpu_eff_alloc"] / s["count_cpu_eff_alloc"]) if s["count_cpu_eff_alloc"] > 0 else None
-    # Efficiency metrics - memory and time
+    # Efficiency metrics - memory (requested) and time
     s["weighted_mem_eff"] = (s["total_maxrss"] / s["total_reqmem"] * 100) if s["total_reqmem"] > 0 else None
     s["weighted_time_eff"] = (s["total_elapsed"] / s["total_timelimit"] * 100) if s["total_timelimit"] > 0 else None
     s["avg_mem_eff"] = (s["sum_job_mem_eff"] / s["count_mem_eff"]) if s["count_mem_eff"] > 0 else None
     s["avg_time_eff"] = (s["sum_job_time_eff"] / s["count_time_eff"]) if s["count_time_eff"] > 0 else None
+    # Efficiency metrics - memory (allocated)
+    s["weighted_mem_eff_alloc"] = (s["total_maxrss"] / s["total_allocmem"] * 100) if s["total_allocmem"] > 0 else None
+    s["avg_mem_eff_alloc"] = (s["sum_job_mem_eff_alloc"] / s["count_mem_eff_alloc"]) if s["count_mem_eff_alloc"] > 0 else None
 
     # Resource averages (based on INCLUDED_STATES jobs only)
     s["avg_elapsed"] = (s["total_elapsed"] / eff_job_count) if eff_job_count > 0 else None
@@ -208,6 +221,7 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
         "total_user_cpu_sec", "total_sys_cpu_sec", "user_cpu_pct", "sys_cpu_pct",
         "total_maxrss_bytes", "avg_maxrss_bytes",
         "total_reqmem_bytes", "avg_reqmem_bytes",
+        "total_allocmem_bytes",
         "total_reqcpus", "avg_reqcpus",
         "total_nodes",
         "total_wait_sec", "avg_wait_sec",
@@ -215,6 +229,7 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
         "weighted_cpu_eff_req", "avg_cpu_eff_req",
         "weighted_cpu_eff_alloc", "avg_cpu_eff_alloc",
         "weighted_mem_eff", "avg_mem_eff",
+        "weighted_mem_eff_alloc", "avg_mem_eff_alloc",
         "weighted_time_eff", "avg_time_eff",
     ]
 
@@ -247,6 +262,7 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
             format_value(s["avg_maxrss"]),
             format_value(s["total_reqmem"]),
             format_value(s["avg_reqmem"]),
+            format_value(s["total_allocmem"]),
             format_value(s["total_reqcpus"]),
             format_value(s["avg_reqcpus"]),
             format_value(s["total_nodes"]),
@@ -259,6 +275,8 @@ def output_csv(stats, collate_label, outfile=None, include_header=True):
             format_value(s["avg_cpu_eff_alloc"]),
             format_value(s["weighted_mem_eff"]),
             format_value(s["avg_mem_eff"]),
+            format_value(s.get("weighted_mem_eff_alloc")),
+            format_value(s.get("avg_mem_eff_alloc")),
             format_value(s["weighted_time_eff"]),
             format_value(s["avg_time_eff"]),
         ]

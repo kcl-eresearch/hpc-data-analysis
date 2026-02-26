@@ -625,5 +625,307 @@ with open(OUTPUT_FILE, 'w') as f:
     except Exception as e:
         out(f"Error in breakdown query: {e}")
 
+    # =========================================================================
+    # Part 5: Requested vs Allocated Memory (tres_req vs tres_alloc)
+    # =========================================================================
+    out()
+    out("=" * 80)
+    out("PART 5: Requested vs Allocated Memory (tres_req vs tres_alloc)")
+    out("=" * 80)
+    out()
+    out("Data sources (all from create_job_table):")
+    out("  - tres_req (TRES ID 2): total requested memory in MB")
+    out("  - tres_alloc (TRES ID 2): total allocated memory in MB")
+    out("  - mem_req (bit 63): distinguishes --mem vs --mem-per-cpu")
+    out("  - cpus_req vs alloc_cpus (TRES ID 1 in tres_alloc): requested vs allocated CPUs")
+    out()
+    out("Hypothesis: For --mem-per-cpu jobs where alloc_cpus > cpus_req,")
+    out("Slurm allocates proportionally more memory than requested.")
+    out("This causes memory efficiency > 100% even with ConstrainRAMSpace enabled,")
+    out("because the cgroup enforces the *allocated* amount, not the *requested* amount.")
+
+    # -------------------------------------------------------------------------
+    # Part 5a: Overall req_mem vs alloc_mem comparison by memory type
+    # -------------------------------------------------------------------------
+    out()
+    out("-" * 40)
+    out("Part 5a: req_mem vs alloc_mem by memory type")
+    out("-" * 40)
+
+    try:
+        cur.execute("""
+            SELECT
+                mem_type, comparison, COUNT(*) as cnt
+            FROM (
+                SELECT
+                    CASE WHEN j.mem_req & 0x8000000000000000 != 0 THEN 'per-cpu' ELSE 'per-node' END as mem_type,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS req_mem,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS alloc_mem,
+                    CASE
+                        WHEN CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1), ',', 1) AS UNSIGNED)
+                           = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1), ',', 1) AS UNSIGNED)
+                        THEN 'req == alloc'
+                        ELSE 'req != alloc'
+                    END as comparison
+                FROM create_job_table j
+                WHERE j.time_start > 0 AND j.time_end > 0
+            ) sub
+            GROUP BY mem_type, comparison
+            ORDER BY mem_type, comparison
+        """)
+        out()
+        out(f"  {'mem_type':>10}  {'comparison':>15}  {'count':>12}  {'%':>8}")
+        rows = list(cur)
+        total = sum(r[2] for r in rows)
+        for mem_type, comparison, cnt in rows:
+            pct = (cnt / total * 100) if total else 0
+            out(f"  {mem_type:>10}  {comparison:>15}  {cnt:>12}  {pct:>7.2f}%")
+        out(f"  {'':>10}  {'Total':>15}  {total:>12}")
+    except Exception as e:
+        out(f"Error: {e}")
+
+    # -------------------------------------------------------------------------
+    # Part 5b: Focus on jobs where alloc_cpus != cpus_req
+    # -------------------------------------------------------------------------
+    out()
+    out("-" * 40)
+    out("Part 5b: Jobs where alloc_cpus != cpus_req — memory comparison")
+    out("-" * 40)
+
+    try:
+        cur.execute("""
+            SELECT
+                mem_type, comparison, COUNT(*) as cnt
+            FROM (
+                SELECT
+                    CASE WHEN j.mem_req & 0x8000000000000000 != 0 THEN 'per-cpu' ELSE 'per-node' END as mem_type,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS req_mem,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS alloc_mem,
+                    CASE
+                        WHEN CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1), ',', 1) AS UNSIGNED)
+                           = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1), ',', 1) AS UNSIGNED)
+                        THEN 'req == alloc'
+                        ELSE 'req != alloc'
+                    END as comparison
+                FROM create_job_table j
+                WHERE j.time_start > 0 AND j.time_end > 0
+                  AND j.cpus_req != CAST(
+                      SUBSTRING_INDEX(
+                          SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                          ',', 1
+                      ) AS UNSIGNED
+                  )
+            ) sub
+            GROUP BY mem_type, comparison
+            ORDER BY mem_type, comparison
+        """)
+        out()
+        out(f"  {'mem_type':>10}  {'comparison':>15}  {'count':>12}  {'%':>8}")
+        rows = list(cur)
+        total = sum(r[2] for r in rows)
+        for mem_type, comparison, cnt in rows:
+            pct = (cnt / total * 100) if total else 0
+            out(f"  {mem_type:>10}  {comparison:>15}  {cnt:>12}  {pct:>7.2f}%")
+        out(f"  {'':>10}  {'Total':>15}  {total:>12}")
+    except Exception as e:
+        out(f"Error: {e}")
+
+    # -------------------------------------------------------------------------
+    # Part 5c: Sample rows with actual values
+    # -------------------------------------------------------------------------
+    out()
+    out("-" * 40)
+    out("Part 5c: Sample --mem-per-cpu jobs where alloc_cpus > cpus_req")
+    out("-" * 40)
+
+    try:
+        cur.execute("""
+            SELECT
+                j.id_job,
+                j.cpus_req,
+                CAST(
+                    SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                        ',', 1
+                    ) AS UNSIGNED
+                ) AS alloc_cpus,
+                CAST(
+                    SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1),
+                        ',', 1
+                    ) AS UNSIGNED
+                ) AS req_mem,
+                CAST(
+                    SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1),
+                        ',', 1
+                    ) AS UNSIGNED
+                ) AS alloc_mem
+            FROM create_job_table j
+            WHERE j.time_start > 0 AND j.time_end > 0
+              AND j.mem_req & 0x8000000000000000 != 0
+              AND j.cpus_req != CAST(
+                  SUBSTRING_INDEX(
+                      SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                      ',', 1
+                  ) AS UNSIGNED
+              )
+            ORDER BY j.id_job DESC
+            LIMIT 15
+        """)
+        out()
+        out(f"  {'id_job':>10}  {'cpus_req':>8}  {'alloc_cpus':>10}  {'req_mem':>10}  {'alloc_mem':>10}  {'alloc/req':>10}  {'cpus ratio':>10}")
+        out(f"  {'':>10}  {'':>8}  {'(TRES)':>10}  {'(MB)':>10}  {'(MB)':>10}  {'(mem)':>10}  {'(cpus)':>10}")
+        for row in cur:
+            id_job, cpus_req, alloc_cpus, req_mem, alloc_mem = row
+            mem_ratio = (alloc_mem / req_mem) if req_mem > 0 else 0
+            cpu_ratio = (alloc_cpus / cpus_req) if cpus_req > 0 else 0
+            out(f"  {id_job:>10}  {cpus_req:>8}  {alloc_cpus:>10}  {req_mem:>10}  {alloc_mem:>10}  {mem_ratio:>10.2f}  {cpu_ratio:>10.2f}")
+    except Exception as e:
+        out(f"Error: {e}")
+
+    # -------------------------------------------------------------------------
+    # Part 5d: Verify proportional scaling for --mem-per-cpu jobs
+    # -------------------------------------------------------------------------
+    out()
+    out("-" * 40)
+    out("Part 5d: Does alloc_mem / req_mem == alloc_cpus / cpus_req for --mem-per-cpu jobs?")
+    out("-" * 40)
+    out()
+    out("For --mem-per-cpu jobs where alloc_cpus > cpus_req, if memory is scaled")
+    out("proportionally, then alloc_mem / req_mem should equal alloc_cpus / cpus_req.")
+
+    try:
+        cur.execute("""
+            SELECT
+                proportional, COUNT(*) as cnt
+            FROM (
+                SELECT
+                    j.id_job,
+                    j.cpus_req,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS alloc_cpus,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS req_mem,
+                    CAST(
+                        SUBSTRING_INDEX(
+                            SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1),
+                            ',', 1
+                        ) AS UNSIGNED
+                    ) AS alloc_mem,
+                    CASE
+                        WHEN j.cpus_req > 0
+                         AND CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1), ',', 1) AS UNSIGNED) > 0
+                         AND CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1), ',', 1) AS UNSIGNED) * j.cpus_req
+                           = CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1), ',', 1) AS UNSIGNED)
+                           * CAST(SUBSTRING_INDEX(SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1), ',', 1) AS UNSIGNED)
+                        THEN 'proportional'
+                        ELSE 'not proportional'
+                    END as proportional
+                FROM create_job_table j
+                WHERE j.time_start > 0 AND j.time_end > 0
+                  AND j.mem_req & 0x8000000000000000 != 0
+                  AND j.cpus_req != CAST(
+                      SUBSTRING_INDEX(
+                          SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                          ',', 1
+                      ) AS UNSIGNED
+                  )
+            ) sub
+            GROUP BY proportional
+        """)
+        out()
+        rows = list(cur)
+        total = sum(r[1] for r in rows)
+        out(f"  {'Result':>20}  {'Count':>12}  {'%':>8}")
+        for result, cnt in rows:
+            pct = (cnt / total * 100) if total else 0
+            out(f"  {result:>20}  {cnt:>12}  {pct:>7.2f}%")
+        out(f"  {'Total':>20}  {total:>12}")
+    except Exception as e:
+        out(f"Error: {e}")
+
+    # Sample --mem (per-node) jobs where alloc_cpus != cpus_req
+    out()
+    out("-" * 40)
+    out("Part 5e: Sample --mem (per-node) jobs where alloc_cpus > cpus_req")
+    out("-" * 40)
+    out()
+    out("For --mem (per-node) jobs, alloc_mem should equal req_mem regardless of CPU count.")
+
+    try:
+        cur.execute("""
+            SELECT
+                j.id_job,
+                j.cpus_req,
+                CAST(
+                    SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                        ',', 1
+                    ) AS UNSIGNED
+                ) AS alloc_cpus,
+                CAST(
+                    SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(CONCAT(',', j.tres_req), ',2=', -1),
+                        ',', 1
+                    ) AS UNSIGNED
+                ) AS req_mem,
+                CAST(
+                    SUBSTRING_INDEX(
+                        SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',2=', -1),
+                        ',', 1
+                    ) AS UNSIGNED
+                ) AS alloc_mem
+            FROM create_job_table j
+            WHERE j.time_start > 0 AND j.time_end > 0
+              AND j.mem_req & 0x8000000000000000 = 0
+              AND j.mem_req > 0
+              AND j.cpus_req != CAST(
+                  SUBSTRING_INDEX(
+                      SUBSTRING_INDEX(CONCAT(',', j.tres_alloc), ',1=', -1),
+                      ',', 1
+                  ) AS UNSIGNED
+              )
+            ORDER BY j.id_job DESC
+            LIMIT 15
+        """)
+        out()
+        out(f"  {'id_job':>10}  {'cpus_req':>8}  {'alloc_cpus':>10}  {'req_mem':>10}  {'alloc_mem':>10}  {'match?':>8}")
+        out(f"  {'':>10}  {'':>8}  {'(TRES)':>10}  {'(MB)':>10}  {'(MB)':>10}")
+        for row in cur:
+            id_job, cpus_req, alloc_cpus, req_mem, alloc_mem = row
+            match = "YES" if req_mem == alloc_mem else "NO"
+            out(f"  {id_job:>10}  {cpus_req:>8}  {alloc_cpus:>10}  {req_mem:>10}  {alloc_mem:>10}  {match:>8}")
+    except Exception as e:
+        out(f"Error: {e}")
+
 conn.close()
 print(f"\nOutput saved to {OUTPUT_FILE}", file=sys.stderr)
