@@ -435,7 +435,10 @@ def calculate_job_metrics(row):
         "step_count": step_count,
         "n_tasks": n_tasks,
         "is_success": is_success,
-        "submission_type": submission_type,
+        "submission_type": (
+            "interactive" if detect_interactive_from_submit_line(submit_line)
+            else submission_type
+        ),
         "submit_line_ntasks": parse_ntasks_from_submit_line(submit_line),
         "submit_line_cpus_per_task": parse_cpus_per_task_from_submit_line(submit_line),
         "submit_line_interactive": detect_interactive_from_submit_line(submit_line),

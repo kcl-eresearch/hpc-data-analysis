@@ -10,6 +10,7 @@ original_code/
 # Documentation (draft - to review before making public)
 docs/development/
 docs/analysis/
+*.pdf
 
 # Lock files
 .~lock.*

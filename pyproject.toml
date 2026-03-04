@@ -21,6 +21,7 @@ notebook = [
     "seaborn",
     "scipy",
     "ipywidgets",
+    "statsmodels",
 ]
 
 [project.scripts]
