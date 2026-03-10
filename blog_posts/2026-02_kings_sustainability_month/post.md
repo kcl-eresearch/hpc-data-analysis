@@ -30,15 +30,11 @@ TODO: Summary table — total jobs, mean/median CPU and memory efficiency.
 
 ![Memory Requested Distribution](../../results/plots/2026-02_sustainability/memory_requested_distribution.png)
 
+![Time Requested Distribution](../../results/plots/2026-02_sustainability/time_requested_distribution.png)
+
 ![Wait Time Distribution](../../results/plots/2026-02_sustainability/wait_time_distribution.png)
 
 ![Nodes Distribution](../../results/plots/2026-02_sustainability/nodes_distribution.png)
-
-![Time Requested Distribution](../../results/plots/2026-02_sustainability/time_requested_distribution.png)
-
-![Tasks and CPUs-per-Task Distribution](../../results/plots/2026-02_sustainability/ntasks_cpus_per_task_distribution.png)
-
-![Tasks vs CPUs-per-Task](../../results/plots/2026-02_sustainability/ntasks_vs_cpus_per_task.png)
 
 ### How Much of Those Resources Goes to Waste?
 
