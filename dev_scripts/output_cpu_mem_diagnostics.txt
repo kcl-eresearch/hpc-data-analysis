@@ -1,210 +1,281 @@
 ================================================================================
-PART 1: cpus_req vs AllocCPUS (TRES ID 1 from tres_alloc)
+PART 1: CPU requests — requested vs allocated, single vs multi-CPU
 ================================================================================
 
-Note: sacct's AllocCPUS is not a column — it's parsed from tres_alloc.
-tres_alloc has format '1=N,...' where TRES ID 1 = CPU.
-tres_alloc column: ('tres_alloc', 'text', 'NO', '', "''", '')
+Columns (all from create_job_table):
+  - cpus_req: direct column storing requested CPUs
+  - tres_alloc: TRES-encoded string; TRES ID 1 = allocated CPUs
+    Format: '1=N,2=M,...' where 1=CPU, 2=memory(MB), 4=node, etc.
 
-cpus_req vs AllocCPUS (top 30 combos by frequency):
-    cpus_req    alloc_cpus       count       comparison
-           1             1    19079807            EQUAL
-           8             8     2227747            EQUAL
-           1             2     1502824      alloc > req
-           4             4     1499639            EQUAL
-           5             5     1435626            EQUAL
-           2             2     1252431            EQUAL
-          16            16      817871            EQUAL
-           6             6      633083            EQUAL
-          10            10      496942            EQUAL
-          12            12      339924            EQUAL
-           3             3      265240            EQUAL
-         100           100      242654            EQUAL
-          32            32      202624            EQUAL
-          20            20      116117            EQUAL
-          22            22       79012            EQUAL
-          28            28       43268            EQUAL
-          30            30       39497            EQUAL
-          24            24       32145            EQUAL
-          14            14       31768            EQUAL
-           1            28       27656      alloc > req
-           7             7       23716            EQUAL
-          64            64       22086            EQUAL
-           5             6       17286      alloc > req
-          24            28       16379      alloc > req
-          50            50       15122            EQUAL
-          40            40       14960            EQUAL
-           1            32       13365      alloc > req
-          25            25       11157            EQUAL
-          15            15       11145            EQUAL
-          10             0       10981      alloc < req
+cpus_req vs tres_alloc CPU (top 30 combos by frequency):
+    cpus_req    tres_alloc         count         %       comparison
+    (column)   (TRES ID 1)
+           1             1      19341157    62.00%            EQUAL
+           8             8       2356994     7.56%            EQUAL
+           4             4       1573806     5.04%            EQUAL
+           1             2       1532761     4.91%      alloc > req
+           5             5       1437320     4.61%            EQUAL
+           2             2       1263966     4.05%            EQUAL
+          16            16        822678     2.64%            EQUAL
+           6             6        653424     2.09%            EQUAL
+          10            10        504806     1.62%            EQUAL
+          12            12        348001     1.12%            EQUAL
+         100           100        293177     0.94%            EQUAL
+           3             3        266161     0.85%            EQUAL
+          32            32        209900     0.67%            EQUAL
+          20            20        136477     0.44%            EQUAL
+          22            22         79012     0.25%            EQUAL
+           5             6         51352     0.16%      alloc > req
+          28            28         43283     0.14%            EQUAL
+          24            24         41250     0.13%            EQUAL
+          30            30         39802     0.13%            EQUAL
+          14            14         31771     0.10%            EQUAL
+           1            28         27814     0.09%      alloc > req
+           7             7         23769     0.08%            EQUAL
+          64            64         22687     0.07%            EQUAL
+          50            50         17008     0.05%            EQUAL
+          24            28         16379     0.05%      alloc > req
+          40            40         15378     0.05%            EQUAL
+           1            32         13365     0.04%      alloc > req
+          15            15         11228     0.04%            EQUAL
+          25            25         11186     0.04%            EQUAL
+           1           124         10988     0.04%      alloc > req
 
-Summary: total=30707549, equal=29024524, differ=1683025
+Summary (cpus_req vs tres_alloc):
+  Total jobs:      31389228
+  Equal:           29641190  ( 94.43%)
+  Differ:           1748038  (  5.57%)
 
-Sample jobs where cpus_req != AllocCPUS:
-      id_job    cpus_req    alloc_cpus   nodes  tres_req  /  tres_alloc
-    31605470           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605458           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605206           1             2       1  1=1,2=1000,4=1,1001=1  /  1=2,2=2000,4=1,1001=1
-    31605205           1             2       1  1=1,2=1000,4=1,1001=1  /  1=2,2=2000,4=1,1001=1
-    31605173           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605139           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605138           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605137           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605136           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
-    31605135           1             2       1  1=1,2=32768,4=1,1001=1  /  1=2,2=32768,3=18446744073709551614,4=1,1001=1
+Summary (single vs multi-CPU jobs):
+  Single-CPU (cpus_req = 1):      20967252  ( 66.80%)
+  Multi-CPU (cpus_req > 1):       10417646  ( 33.19%)
+
+Sample jobs where cpus_req (column) != tres_alloc CPU (TRES ID 1):
+      id_job    cpus_req    tres_alloc   nodes  tres_req / tres_alloc
+                (column)   (TRES ID 1)  _alloc
+    32310585           1             2       1  1=1,2=98304,4=1,1001=1 / 1=2,2=98304,3=18446744073709551614,4=1,1001=1
+    32310584           1             2       1  1=1,2=98304,4=1,1001=1 / 1=2,2=98304,3=18446744073709551614,4=1,1001=1
+    32310559           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310558           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310557           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310556           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310555           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310554           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310553           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
+    32310552           1             2       1  1=1,2=32768,4=1 / 1=2,2=32768,3=18446744073709551614,4=1
 
 ================================================================================
-PART 1b: cpus_req vs ReqCPUS (TRES ID 1 from tres_req)
+PART 1b: cpus_req vs tres_req CPU — column vs TRES string consistency
 ================================================================================
 
-Checking if cpus_req column matches the CPU value encoded in tres_req.
+Columns (all from create_job_table):
+  - cpus_req: direct column storing requested CPUs
+  - tres_req: TRES-encoded string; TRES ID 1 = requested CPUs
+Checking if these two sources of 'requested CPUs' are consistent.
 
 cpus_req vs tres_req CPU (top 30 combos by frequency):
-    cpus_req    tres_req_cpu       count       comparison
-           1               1    20675348            EQUAL
-           8               8     2229817            EQUAL
-           4               4     1501644            EQUAL
-           5               5     1453037            EQUAL
-           2               2     1255173            EQUAL
-          16              16      818618            EQUAL
-           6               6      633338            EQUAL
-          10              10      508090            EQUAL
-          12              12      341450            EQUAL
-           3               3      266184            EQUAL
-         100             100      242715            EQUAL
-          32              32      203829            EQUAL
-          20              20      116307            EQUAL
-          22              22       79015            EQUAL
-          24              24       48660            EQUAL
-          28              28       43419            EQUAL
-          30              30       39598            EQUAL
-          14              14       31830            EQUAL
-           7               7       25693            EQUAL
-          64              64       22293            EQUAL
-          50              50       15152            EQUAL
-          40              40       15012            EQUAL
-          25              25       14690            EQUAL
-          15              15       11360            EQUAL
-          84              84       10797            EQUAL
-          18              18        9254            EQUAL
-          60              60        9206            EQUAL
-          36              36        7996            EQUAL
-          11              11        7164            EQUAL
-         112             112        7106            EQUAL
+    cpus_req      tres_req         count         %       comparison
+    (column)   (TRES ID 1)
+           1             1      20967108    66.94%            EQUAL
+           8             8       2359122     7.53%            EQUAL
+           4             4       1575815     5.03%            EQUAL
+           5             5       1488797     4.75%            EQUAL
+           2             2       1266709     4.04%            EQUAL
+          16            16        823437     2.63%            EQUAL
+           6             6        653679     2.09%            EQUAL
+          10            10        515955     1.65%            EQUAL
+          12            12        349528     1.12%            EQUAL
+         100           100        293239     0.94%            EQUAL
+           3             3        267200     0.85%            EQUAL
+          32            32        211109     0.67%            EQUAL
+          20            20        136674     0.44%            EQUAL
+          22            22         79015     0.25%            EQUAL
+          24            24         57766     0.18%            EQUAL
+          28            28         43434     0.14%            EQUAL
+          30            30         39903     0.13%            EQUAL
+          14            14         31833     0.10%            EQUAL
+           7             7         25816     0.08%            EQUAL
+          64            64         22894     0.07%            EQUAL
+          50            50         17038     0.05%            EQUAL
+          40            40         15430     0.05%            EQUAL
+          25            25         14729     0.05%            EQUAL
+          15            15         11446     0.04%            EQUAL
+          36            36         10850     0.03%            EQUAL
+          84            84         10797     0.03%            EQUAL
+          60            60          9408     0.03%            EQUAL
+          18            18          9257     0.03%            EQUAL
+          11            11          7191     0.02%            EQUAL
+         112           112          7106     0.02%            EQUAL
 
-Summary: total=30707549, equal=30707226, differ=323
+Summary:
+  Total jobs:      31389228
+  Equal:           31388905  (100.00%)
+  Differ:               323  (  0.00%)
 
-Sample jobs where cpus_req != tres_req CPU:
-      id_job    cpus_req    tres_req_cpu  tres_req
-    21256757           5               6  1=6,2=12000,4=1,5=6
-    21256743           1               2  1=2,4=1,5=2
-    21256713           1               2  1=2,2=64000,4=1,5=2
-    21256618           1               2  1=2,2=40960,4=1,5=2
-    21256468           1               2  1=2,2=81920,4=1,5=2
-    21255272           5               6  1=6,2=18000,4=1,5=6
-    21252758           1               2  1=2,2=512000,4=1,5=2
-    21250145           1               2  1=2,2=512000,4=1,5=2
-    21250144           1               2  1=2,2=512000,4=1,5=2
-    21250143           1               2  1=2,2=512000,4=1,5=2
+Sample jobs where cpus_req (column) != tres_req (TRES ID 1):
+      id_job    cpus_req      tres_req  tres_req (full string)
+                (column)   (TRES ID 1)
+    21256757           5             6  1=6,2=12000,4=1,5=6
+    21256743           1             2  1=2,4=1,5=2
+    21256713           1             2  1=2,2=64000,4=1,5=2
+    21256618           1             2  1=2,2=40960,4=1,5=2
+    21256468           1             2  1=2,2=81920,4=1,5=2
+    21255272           5             6  1=6,2=18000,4=1,5=6
+    21252758           1             2  1=2,2=512000,4=1,5=2
+    21250145           1             2  1=2,2=512000,4=1,5=2
+    21250144           1             2  1=2,2=512000,4=1,5=2
+    21250143           1             2  1=2,2=512000,4=1,5=2
 
 ================================================================================
-PART 2: mem_req flag bit (--mem vs --mem-per-cpu)
+PART 2: mem_req flag bit — --mem vs --mem-per-cpu distribution
 ================================================================================
-mem_req column: ('mem_req', 'bigint(20) unsigned', 'NO', '', '0', '')
+
+Column (from create_job_table):
+  - mem_req: bigint(20) unsigned, stores requested memory
+    Bit 63 (MSB) encodes memory type: 0 = --mem (per-node), 1 = --mem-per-cpu
+    Lower 63 bits store the actual memory value in MB
 
 All memory-related columns in create_job_table:
   ('mem_req', 'bigint(20) unsigned', 'NO', '', '0', '')
 
-mem_req flag bit distribution (bit 63 = --mem-per-cpu):
-         per-node (no flag):   30707549 jobs
+mem_req flag bit distribution:
+                     Memory type         Count         %
+       --mem (per-node, no flag)      13868104    44.18%
+      --mem-per-cpu (bit 63 set)      17521124    55.82%
+
+  Total:     31389228
 
 ================================================================================
-PART 3: mem_req vs tres_req memory for --mem-per-cpu jobs
+PART 3: mem_req vs tres_req memory — comparing column with TRES string
 ================================================================================
 
---mem-per-cpu jobs with cpus_req > 1:
-      id_job   cpus   mem_req_raw     mem_value    tres_mem   tres_mem/cpus  tres_req
-    31605471      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605469      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605464      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605463      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605457      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605456      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605451      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605450      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605448      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605447      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605445      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605444      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605435      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605434      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
-    31605432      8  9223372036854776808          1000        8000            1000  1=8,2=8000,4=1,1001=1
+Columns (all from create_job_table):
+  - mem_req: bigint storing memory request (bit 63 = per-cpu flag, lower 63 bits = value in MB)
+  - tres_req: TRES-encoded string; TRES ID 2 = total requested memory in MB
 
-Verification: for --mem-per-cpu jobs, does (mem_value × cpus_req) = tres_mem?
-  --mem-per-cpu jobs: total=17310356, match=17307697, differ=2659
-  Match rate: 100.0%
+Expected relationship:
+  - --mem-per-cpu jobs: (mem_req value) × cpus_req = tres_req memory
+  - --mem (per-node) jobs: mem_req value = tres_req memory directly
 
-Sample --mem-per-cpu jobs (showing mem_value × cpus = calculated vs tres_mem):
-      id_job   cpus   mem_value    calculated    tres_mem   match?
-    31605471      8        1000          8000        8000      YES
-    31605469      8        1000          8000        8000      YES
-    31605464      8        1000          8000        8000      YES
-    31605463      8        1000          8000        8000      YES
-    31605459      1        1000          1000        1000      YES
-    31605457      8        1000          8000        8000      YES
-    31605456      8        1000          8000        8000      YES
-    31605451      8        1000          8000        8000      YES
-    31605450      8        1000          8000        8000      YES
-    31605448      8        1000          8000        8000      YES
+----------------------------------------
+Part 3a: --mem-per-cpu jobs (bit 63 set)
+----------------------------------------
 
-For --mem (per-node) jobs, mem_value should equal tres_mem directly:
-  --mem (per-node) jobs: total=12321890, match=12307157, differ=14733
-  Match rate: 99.9%
+Sample --mem-per-cpu jobs with cpus_req > 1:
+      id_job  cpus_req               mem_req     mem_value    tres_req   tres/cpus  tres_req (string)
+              (column)         (column, raw)   (lower 63b)  (TRES ID 2)            
+    32310809        32   9223372036854776808          1000       32000        1000  1=32,2=32000,4=1,1001=1
+    32310778        32   9223372036854776808          1000       32000        1000  1=32,2=32000,4=1,1001=1
+    32309856        12   9223372036854778880          3072       36864        3072  1=12,2=36864,4=1
+    32309580        32   9223372036854776808          1000       32000        1000  1=32,2=32000,4=1,1001=1
+    32309465         2   9223372036854784000          8192       16384        8192  1=2,2=16384,4=1
+    32309457        64   9223372036854776832          1024       65536        1024  1=64,2=65536,4=1
+    32309452        64   9223372036854776832          1024       65536        1024  1=64,2=65536,4=1
+    32309418        64   9223372036854776832          1024       65536        1024  1=64,2=65536,4=1
+    32309392         6   9223372036854786048         10240       61440       10240  1=6,2=61440,4=1
+    32309343         6   9223372036854786048         10240       61440       10240  1=6,2=61440,4=1
+    32308305        64   9223372036854776808          1000       64000        1000  1=64,2=64000,4=1
+    32308192        64   9223372036854776808          1000       64000        1000  1=64,2=64000,4=1
+    32308096        32   9223372036854776808          1000       32000        1000  1=32,2=32000,4=1,1001=1
+    32308041        32   9223372036854776808          1000       32000        1000  1=32,2=32000,4=1,1001=1
+    32307860        32   9223372036854776808          1000       32000        1000  1=32,2=32000,4=1,1001=1
+
+Verification: for --mem-per-cpu jobs, does (mem_value × cpus_req) = tres_req memory?
+  Total --mem-per-cpu jobs:      17521124
+  Match (formula holds):         17518465  ( 99.98%)
+  Differ (formula fails):            2659  (  0.02%)
+
+Sample --mem-per-cpu jobs (showing mem_value × cpus = calculated vs tres_req memory):
+      id_job  cpus_req   mem_value    calculated    tres_req   match?
+              (column)  (lower 63b)    (val×cpus)  (TRES ID 2)
+    32310809        32        1000         32000       32000      YES
+    32310778        32        1000         32000       32000      YES
+    32309856        12        3072         36864       36864      YES
+    32309810         1        1000          1000        1000      YES
+    32309773         1      102400        102400      102400      YES
+    32309757         1      102400        102400      102400      YES
+    32309731         1      102400        102400      102400      YES
+    32309698         1      102400        102400      102400      YES
+    32309695         1      102400        102400      102400      YES
+    32309595         1      102400        102400      102400      YES
+
+----------------------------------------
+Part 3b: --mem (per-node) jobs (bit 63 not set)
+----------------------------------------
+
+For --mem (per-node) jobs, mem_value should equal tres_req memory directly:
+  Total --mem (per-node) jobs:      12785391
+  Match (mem_value = tres):         12770495  ( 99.88%)
+  Differ:                              14896  (  0.12%)
 
 Sample --mem (per-node) jobs:
-      id_job   cpus     mem_value    tres_mem    match?
-    31605427    100        131072      131072       YES
-    31605426    100        131072      131072       YES
-    31605419    100        131072      131072       YES
-    31605418    100        131072      131072       YES
-    31605414    100        131072      131072       YES
-    31605409    100        131072      131072       YES
-    31605405    100        131072      131072       YES
-    31605404    100        131072      131072       YES
-    31605400    100        131072      131072       YES
-    31605399    100        131072      131072       YES
+      id_job  cpus_req     mem_value    tres_req    match?
+              (column)   (lower 63b)  (TRES ID 2)
+    32310735        32        131072      131072       YES
+    32310709        32        131072      131072       YES
+    32310708        32        131072      131072       YES
+    32310707        32        131072      131072       YES
+    32310706        32        131072      131072       YES
+    32310705        32        131072      131072       YES
+    32310704        32        131072      131072       YES
+    32310703        32        131072      131072       YES
+    32310702        32        131072      131072       YES
+    32310701        32        131072      131072       YES
 
 ================================================================================
-PART 4: Jobs with apparent memory efficiency > 100% — which mem type?
+PART 4: Jobs with apparent memory efficiency > 100% — breakdown by mem type
 ================================================================================
 
-Completed jobs where maxrss > tres_req_mem * 1M (apparent mem eff > 100%):
-      id_job   cpus  mem_type     mem_val    tres_mem           maxrss      eff%
-    31605206      1   per-cpu        1000        1000       2082955264    198.6%
-    31596978      4  per-node       65536       65536     221284032512    322.0%
-    31595929      1   per-cpu        1000        1000       2083176448    198.7%
-    31595842      1   per-cpu        1000        1000       2083049472    198.7%
-    31595193      1   per-cpu        1000        1000       2083172352    198.7%
-    31594795      1   per-cpu        1000        1000       2083180544    198.7%
-    31594319      1   per-cpu        1000        1000       2083024896    198.7%
-    31592003      1   per-cpu        1000        1000       2083139584    198.7%
-    31590192      1   per-cpu        1000        1000       2083028992    198.7%
-    31590122      4  per-node       65536       65536     242938900480    353.5%
-    31588494      4  per-node       16384       16384      27149352960    158.0%
-    31588423      1   per-cpu        1000        1000       2083069952    198.7%
-    31587986      1   per-cpu        1000        1000       6505197568    620.4%
-    31587981      1   per-cpu        1000        1000       6938701824    661.7%
-    31587980      1   per-cpu        1000        1000       6943424512    662.2%
-    31587978      1   per-cpu        1000        1000       6941999104    662.0%
-    31587977      1   per-cpu        1000        1000       6940889088    661.9%
-    31587973      1   per-cpu        1000        1000       6940352512    661.9%
-    31587972      1   per-cpu        1000        1000       6499356672    619.8%
-    31587971      1   per-cpu        1000        1000       7410343936    706.7%
+Data sources:
+  - tres_req (TRES ID 2) from create_job_table: requested memory in MB
+  - tres_usage_in_max (TRES ID 2) from create_step_table: peak memory usage in bytes
+  - mem_req (bit 63) from create_job_table: distinguishes --mem vs --mem-per-cpu
 
-Breakdown of mem eff > 100% jobs by memory request type:
-     per-cpu:  1641990 jobs
-    per-node:   449032 jobs
+Memory efficiency = (maxrss bytes) / (tres_req MB × 1024²) × 100%
+Error: 2013 (HY000): Lost connection to MySQL server during query
+Error in breakdown query: 2013 (HY000): Lost connection to MySQL server during query
 
-Output saved to cpu_mem_diagnostics_output.txt
+================================================================================
+PART 5: Requested vs Allocated Memory (tres_req vs tres_alloc)
+================================================================================
 
+Data sources (all from create_job_table):
+  - tres_req (TRES ID 2): total requested memory in MB
+  - tres_alloc (TRES ID 2): total allocated memory in MB
+  - mem_req (bit 63): distinguishes --mem vs --mem-per-cpu
+  - cpus_req vs alloc_cpus (TRES ID 1 in tres_alloc): requested vs allocated CPUs
+
+Hypothesis: For --mem-per-cpu jobs where alloc_cpus > cpus_req,
+Slurm allocates proportionally more memory than requested.
+This causes memory efficiency > 100% even with ConstrainRAMSpace enabled,
+because the cgroup enforces the *allocated* amount, not the *requested* amount.
+
+----------------------------------------
+Part 5a: req_mem vs alloc_mem by memory type
+----------------------------------------
+Error: 2013 (HY000): Lost connection to MySQL server during query
+
+----------------------------------------
+Part 5b: Jobs where alloc_cpus != cpus_req — memory comparison
+----------------------------------------
+Error: 2013 (HY000): Lost connection to MySQL server during query
+
+----------------------------------------
+Part 5c: Sample --mem-per-cpu jobs where alloc_cpus > cpus_req
+----------------------------------------
+Error: 2013 (HY000): Lost connection to MySQL server during query
+
+----------------------------------------
+Part 5d: Does alloc_mem / req_mem == alloc_cpus / cpus_req for --mem-per-cpu jobs?
+----------------------------------------
+
+For --mem-per-cpu jobs where alloc_cpus > cpus_req, if memory is scaled
+proportionally, then alloc_mem / req_mem should equal alloc_cpus / cpus_req.
+Error: 2013 (HY000): Lost connection to MySQL server during query
+
+----------------------------------------
+Part 5e: Sample --mem (per-node) jobs where alloc_cpus > cpus_req
+----------------------------------------
+
+For --mem (per-node) jobs, alloc_mem should equal req_mem regardless of CPU count.
+Error: 2013 (HY000): Lost connection to MySQL server during query

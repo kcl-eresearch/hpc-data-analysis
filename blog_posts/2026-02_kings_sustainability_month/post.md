@@ -22,6 +22,8 @@ TODO: Summary table — total jobs, mean/median CPU and memory efficiency.
 
 ![Memory Efficiency Distribution](../../results/plots/2026-02_sustainability/mem_efficiency_density.png)
 
+![Memory Efficiency: Low vs High Memory Jobs](../../results/plots/2026-02_sustainability/mem_efficiency_density_split.png)
+
 ### What Resources Are People Requesting?
 
 ![CPUs Requested Distribution](../../results/plots/2026-02_sustainability/cpus_requested_distribution.png)
@@ -32,6 +34,12 @@ TODO: Summary table — total jobs, mean/median CPU and memory efficiency.
 
 ![Nodes Distribution](../../results/plots/2026-02_sustainability/nodes_distribution.png)
 
+![Time Requested Distribution](../../results/plots/2026-02_sustainability/time_requested_distribution.png)
+
+![Tasks and CPUs-per-Task Distribution](../../results/plots/2026-02_sustainability/ntasks_cpus_per_task_distribution.png)
+
+![Tasks vs CPUs-per-Task](../../results/plots/2026-02_sustainability/ntasks_vs_cpus_per_task.png)
+
 ### How Much of Those Resources Goes to Waste?
 
 ![Severity Bar Plot](../../results/plots/2026-02_sustainability/severity_barplot.png)
@@ -41,6 +49,8 @@ TODO: Summary table — total jobs, mean/median CPU and memory efficiency.
 ![CPU Requested vs Used](../../results/plots/2026-02_sustainability/cpu_requested_vs_used.png)
 
 ![Memory Requested vs Used](../../results/plots/2026-02_sustainability/mem_requested_vs_used.png)
+
+![Time Requested vs Used](../../results/plots/2026-02_sustainability/time_requested_vs_used.png)
 
 ### Are CPU-Efficient Jobs Also Memory-Efficient?
 
