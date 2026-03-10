@@ -170,6 +170,17 @@ def detect_interactive_from_submit_line(submit_line):
     return '--pty' in submit_line
 
 
+def detect_batch_from_submit_line(submit_line):
+    """Detect batch jobs by checking for sbatch in submit_line.
+
+    Returns:
+        True if submit_line starts with 'sbatch', False otherwise.
+    """
+    if not submit_line:
+        return False
+    return submit_line.strip().startswith('sbatch')
+
+
 # =============================================================================
 # Database Connection
 # =============================================================================
@@ -437,6 +448,7 @@ def calculate_job_metrics(row):
         "is_success": is_success,
         "submission_type": (
             "interactive" if detect_interactive_from_submit_line(submit_line)
+            else "batch" if detect_batch_from_submit_line(submit_line)
             else submission_type
         ),
         "submit_line_ntasks": parse_ntasks_from_submit_line(submit_line),
