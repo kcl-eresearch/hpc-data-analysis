@@ -223,7 +223,7 @@ A small number of jobs (~9.6k, 0.3%) had time limits exceeding 48 hours, with li
 ### Wait Times
 As stated above, over-requesting resources increases queue wait times. But how long are users actually waiting? This is worth examining, especially since long wait times have been a recurring concern among users. Table 5 summarises the picture.
 
-While a small fraction of jobs (5%) wait more than ~26 hours, the median wait is just 5 minutes — most jobs start almost immediately. This is good news! But tighter resource requests could make it even better for everyone.
+While a small fraction of jobs (5%) wait more than ~26 hours, the median wait is just 5 minutes — most jobs start almost immediately. This is good news! Yet tighter resource requests could make it even better for everyone.
 
 
 |  Statistic  |  Wait time for all jobs   | ≤ 95th percentile |
@@ -264,7 +264,7 @@ Among multi-CPU jobs specifically, ~620k (51%) fall into the "very poor" categor
 Figures 15–17 let us zoom in on individual jobs: each plot shows a random sample of 80,000 jobs, with what was requested on the x-axis and what was actually used on the y-axis — for CPU, memory, and time, respectively. Points on the diagonal represent perfect efficiency; the further a point falls below it, the more was wasted. The colour indicates efficiency percentage.
 
 For all three resources, the scatter falls overwhelmingly below the diagonal — what's requested is often orders of magnitude more than what's used. A few patterns stand out:         
-- CPU time (Figure 15): a band of efficient jobs hugs the diagonal, mostly at smaller request sizes — these are largely the single-CPU jobs we saw performing well earlier. Below them, a broad cloud of jobs requests hours to thousands of hours of CPU time but uses only a small fraction. A distinct cluster stands out in the 1–10 CPU-hour request range where actual usage is less than a minute — these are likely jobs that request multiple cores but crash or exit almost immediately, wasting their entire allocation.
+- CPU time (Figure 15): a band of efficient jobs hugs the diagonal, mostly at smaller request sizes — these are largely the single-CPU jobs we saw performing well earlier. Below them, a broad cloud of jobs requests hours to thousands of hours of CPU time but uses only a small fraction. A distinct cluster stands out in the 1–10 CPU-hour request range where actual usage is less than a minute — worth investigating further.
 - Memory (Figure 16): dense vertical columns at round request values (1, 4, 8, 64, 100 GiB) show that within each common request size, actual usage spans orders of magnitude. At the far right, jobs requesting TiBs of memory use only MiBs to a few GiBs — these are the extreme over-reservations from the previous section. 
 - Wall time (Figure 17): vertical lines at common time limits (1 h, 6 h, 24 h, 2 days) dominate. The 24-hour default stands out most: a dense column of jobs that requested a full day but finished anywhere from seconds to a few hours. A thin band along the diagonal represents jobs that ran until their time limit — the TIMEOUT cases.
 
@@ -277,7 +277,9 @@ For all three resources, the scatter falls overwhelmingly below the diagonal —
 ![Time Requested vs Used](../../results/plots/2026-02_sustainability/time_requested_vs_used.png)
 *Figure 17: Wall time — requested vs used.*
 
-## Efficiency by Faculty
+So far, we've looked at average efficiency and efficiency distributions, resource requests, and waste across all jobs combined — but different research groups use the cluster in different ways. Do some faculties fare better than others? That's what we look at next.
+
+## Efficiency By Faculty
 
 To understand where efficiency varies, we mapped users to faculties via King's Active Directory. The abbreviations used in the plots below are:
 
@@ -294,45 +296,51 @@ To understand where efficiency varies, we mapped users to faculties via King's A
 | **SE**       | Students & Education |
 | **DPSL**     | The Dickson Poon School of Law |
 | **IT**       | IT |
-| **N/A**      | Unknown faculty |
+| **Other**    | Listed as "Other" in Active Directory |
+| **N/A**      | Faculty could not be determined (Active Directory lookup failed) |
 
-### Job outcomes by faculty
-
-The four largest users of the cluster by job volume are NMES, IoPPN, DOCS, and LSM.
+### Job Outcomes By faculty
+Let's first look at who submits the most jobs. Figure 18 shows the outcome of all ~3.7 million submitted jobs, broken down by faculty. The four largest users by job volume are NMES, IoPPN, DOCS, and LSM.
 
 ![Faculty Job Outcomes](../../results/plots/2026-02_sustainability/faculty_job_outcomes.png)
 *Figure 18: Job outcomes by faculty. Numbers at the tip of each bar show the approximate total number of jobs submitted per faculty.*
 
-### Efficiency rankings
+### Efficiency Rankings
+
+How do faculties compare on efficiency? Figure 19 ranks faculties by mean CPU, memory, and time efficiency, from lowest (top) to highest (bottom). Error bars show 95% confidence intervals — wider bars indicate fewer jobs and therefore less certainty.
+
+For CPU efficiency, SSPP leads with over 80%, followed closely by NMES (who submit far more jobs). Roughly half the faculties sit above 50% CPU efficiency, while the rest fall below. For memory efficiency, the picture is more uniformly bleak: IoPPN, NMES, SSPP, and DOCS lead, but none of them exceed 25% on average. Unlike CPU efficiency, where some faculties do genuinely well, memory over-requesting is widespread across all groups. Similarly, time efficiency is universally low, with no faculty exceeding 20% on average.
 
 ![Faculty Efficiency Bar Plots](../../results/plots/2026-02_sustainability/faculty_efficiency_barplots.png)
-*Figure 19: Mean efficiency by faculty. Numbers at the tip of each bar indicate the number of jobs included (with valid efficiency ≤ 100%). Error bars show 95% confidence intervals.*
+*Figure 19: Mean efficiency by faculty with 95% confidence intervals. Numbers at the tip of each bar indicate the number of jobs included (with valid efficiency ≤ 100%). Faculties with fewer than 50 jobs are excluded.*
 
-For CPU efficiency, SSPP, NMES, DOCS, and LSM lead (in that order). For memory efficiency, IoPPN, NMES, SSPP, and DOCS perform best — though even the top faculties average well below 50% memory efficiency.
+### Efficiency Distributions By Faculty
 
-### Efficiency distributions by faculty
+Figure 19 shows averages, but as we saw with the all-job distributions earlier (Figures 2–7), averages can hide a lot. A faculty with 60% mean CPU efficiency might have most jobs near 100% with a few very poor outliers, or jobs spread evenly across the range. Figure 20 uses violin plots to show the full shape of each faculty's distribution, with internal lines marking the 25th, 50th, and 75th percentiles. All violins are normalised to the same maximum width, so a wider section shows where a larger share of that faculty's jobs falls — for absolute job counts, see Figure 18.
 
-Figure 19 shows averages, but the violin plots in Figure 20 reveal the full shape of the distributions:
+For CPU efficiency, the top faculties show a concentration of jobs near 100%, while others have the bulk of their jobs at the low end (below 20%). For memory efficiency, all faculties are dominated by low values — this is an overall pattern, not specific to any one group. Time efficiency follows a similar story: most faculties show a heavy concentration at the low end, reflecting the widespread tendency to over-request time limits.
 
 ![Faculty Efficiency Violins](../../results/plots/2026-02_sustainability/faculty_efficiency_violins.png)
-*Figure 20: Efficiency distributions by faculty. Violin plots showing the distribution of CPU (left) and memory (right) efficiency per faculty. Internal lines mark the 25th, 50th, and 75th percentiles. Faculties with fewer than 50 jobs are excluded.*
+*Figure 20: Violin plots of CPU, memory, and time efficiency by faculty. Internal lines mark the 25th, 50th, and 75th percentiles. Faculties with fewer than 50 jobs are excluded.*
 
-For CPU efficiency, the top faculties show a concentration of jobs near 100%, while others have the bulk of their jobs at the low end (below 20%). For memory efficiency, all faculties are dominated by low values — this is a cluster-wide pattern, not specific to any one group.
+Looking across all three metrics, NMES and SSPP consistently rank near the top for CPU, memory, and time efficiency, making them the closest to "all-round efficient" faculties on the cluster. But the cross-metric picture also reveals a structural difference: CPU efficiency varies substantially between faculties, while for memory and time, the faculty-to-faculty differences are small compared to how low everyone scores. This suggests that over-requesting memory and time are systemic habits across the cluster, not problems confined to particular groups. 
 
+So what can individual users do? In the next section, we look at exactly that.  
 
 ## How to Improve Your Efficiency
+Having analysed nearly 3 million jobs on CREATE HPC from July to December 2025, the good news is that most inefficiency is straightforward to fix:
 
-The data in this post points to clear opportunities. Here's how to act on them:
+1. **Make `seff` a habit.** Whenever you're unsure whether your resource requests are right, run `seff <jobid>` to see your CPU, memory, and GPU efficiency. It takes seconds and tells you immediately whether your resource requests are in the right ballpark. See our [detailed guide on seff and improving job efficiency](https://forum.er.kcl.ac.uk/t/new-tool-available-measuring-and-improving-the-efficiency-of-your-hpc-jobs/3269) for worked examples.
 
-1. **Make `seff` a habit.** After every job, run `seff <jobid>` to see your CPU, memory, and GPU efficiency. It takes seconds and tells you immediately whether your resource requests are in the right ballpark. See our [detailed guide on seff and improving job efficiency](https://forum.er.kcl.ac.uk/t/new-tool-available-measuring-and-improving-the-efficiency-of-your-hpc-jobs/3269) for worked examples.
+2. **Question your CPU count.** 75% of multi-CPU jobs used less than half their requested CPU time. CPU efficiency drops sharply once jobs request more than the default of one core. Before requesting multiple cores, consider two things. First, can your computation be parallelised at all? Some algorithms are inherently sequential — no amount of cores will speed them up. Second, even if your computational problem can be parallelised in principle, does your code actually use multiple cores? Many programs need explicit flags, libraries, or code changes to run in parallel — without them, only one core does the work while the rest sit idle. If you're unsure on either point, seek out training or help before scaling up.
 
-2. **Question your CPU count.** 75% of multi-CPU jobs used less than half their requested CPU time. If you're requesting multiple cores, check that your code actually parallelises — many programs need explicit flags or code changes to use more than one core. If in doubt, start with 1 CPU and scale up only after confirming with `seff` that utilisation stays high.
+3. **Don't ignore memory.** 85% of jobs used less than half their requested memory. If you've never checked, there's a good chance you're over-requesting. Use `seff` to find your actual peak usage and request that plus a 10–20% buffer.
 
-3. **Don't ignore memory.** 85% of jobs used less than half their requested memory. If you've never checked, there's a good chance you're over-requesting. The 1 GiB default is sufficient for many jobs; for larger jobs, use `seff` to find your actual peak usage and request that plus a 10–20% buffer.
+4. **Tighten your time limits.** 92% of jobs used less than half the requested time. While over-requesting time doesn't waste resources directly, it increases your queue wait time. If your job takes 2 hours, request 3 — not 24.
 
-4. **Tighten your time limits.** While over-requesting time doesn't waste resources directly, it increases your queue wait time. If your job takes 2 hours, request 3 — not 24.
+5. **Don't accept defaults blindly.** Every job uses at least one CPU core, but the default time and memory limits may be far more than you need. Think about what your job actually requires before submitting — don't leave defaults in place simply because it's easy.
 
-5. **Break up complex pipelines.** If only some stages of your workflow need many CPUs or lots of memory, split them into separate jobs with appropriate requests for each stage, rather than requesting the maximum for the entire pipeline.
+6. **Break up complex pipelines.** If only some stages of your workflow need many CPUs or lots of memory, split them into separate jobs with appropriate requests for each stage, rather than requesting the maximum for the entire pipeline.
 
 For more detailed guidance — including worked examples for Python, R, and command-line tools — see our [forum post on measuring and improving job efficiency](https://forum.er.kcl.ac.uk/t/new-tool-available-measuring-and-improving-the-efficiency-of-your-hpc-jobs/3269).
 
@@ -348,7 +356,7 @@ For more detailed guidance — including worked examples for Python, R, and comm
 
 This analysis establishes a baseline for cluster efficiency during July–December 2025. We plan to revisit the data in six months to assess whether interventions — this blog post, `seff`, HPC training workshops, and memory enforcement (enabled January 2026) — are making a measurable difference to job efficiency over time.
 
-We're also looking at extending this analysis to **GPU efficiency**, since GPU jobs are among the most resource-intensive on the cluster and `seff` already supports GPU metrics. Additionally, comparing efficiency before and after **memory enforcement** will show whether hard limits change how users request memory.
+We're also looking at extending this analysis to **GPU efficiency**, since GPU jobs are among the most resource-intensive on the cluster and `seff` already supports GPU metrics.
 
 
 ---
@@ -358,41 +366,6 @@ We're also looking at extending this analysis to **GPU efficiency**, since GPU j
 ## Data Source
 
 All data in this post comes from the Slurm accounting database (MySQL) for job metrics, with faculty mapping via King's Active Directory (LDAP).
-
-## Efficiency Metrics
-
-We use **average efficiency** — the mean of per-job efficiency values. Each job counts equally regardless of size, answering the question "what's the typical job's efficiency?".
-
-### CPU Efficiency
-
-```
-CPU Efficiency = (Total CPU time used) / (Elapsed time × CPUs requested) × 100
-```
-
-- **Total CPU time used**: the sum of user-mode and system-mode CPU time across all steps of the job (in CPU-seconds)
-- **Elapsed time**: wall-clock duration of the job (in seconds)
-- **CPUs requested**: the number of CPU cores requested at submission
-
-A job requesting 4 CPUs for 1 hour has 4 CPU-hours available. If it uses 2 CPU-hours of actual computation, its CPU efficiency is 50%.
-
-### Memory Efficiency
-
-```
-Memory Efficiency = MaxRSS / ReqMem × 100
-```
-
-- **MaxRSS**: peak memory usage (resident set size), the maximum memory the job actually used at any point
-- **ReqMem**: total requested memory
-
-The data in this analysis is from a period when memory limits were **not enforced** — jobs could exceed their requested memory without being killed. Memory enforcement was enabled at the end of January 2026; jobs exceeding their memory request will now be terminated.
-
-### Time Efficiency
-
-```
-Time Efficiency = Elapsed time / Time limit × 100
-```
-
-Measures what fraction of the requested wall-clock time was actually used.
 
 ## Job States Included
 
@@ -408,3 +381,40 @@ Only jobs in specific terminal states are included in the efficiency analysis:
 | NODE_FAIL, PREEMPTED |    No    | Infrastructure issues — not the user's fault |
 
 These filters ensure we only compute efficiency for jobs that ran long enough to produce meaningful resource usage data.
+
+## Efficiency Metrics
+
+We use **average efficiency** — the mean of per-job efficiency values. Each job counts equally regardless of size, answering the question "what's the typical job's efficiency?".
+
+### CPU Efficiency
+
+```
+CPU Efficiency = CPU time used / (Elapsed time × CPUs requested) × 100
+```
+
+- **CPU time used**: the total time CPUs spent doing work for the job
+- **Elapsed time**: wall-clock duration of the job
+- **CPUs requested**: the number of CPU cores requested at submission
+
+A job requesting 4 CPUs for 1 hour has 4 CPU-hours available. If it uses 2 CPU-hours of actual computation, its CPU efficiency is 50%.
+
+### Memory Efficiency
+
+```
+Memory Efficiency = Peak memory used / Requested memory × 100
+```
+
+- **Peak memory used**: the maximum memory the job actually used at any point during its run
+- **Requested memory**: the amount of memory requested at submission
+
+The data in this analysis is from a period when memory limits were **not enforced** — jobs could exceed their requested memory without being killed. Memory enforcement was enabled at the end of January 2026; jobs exceeding their memory request will now be terminated.
+
+### Time Efficiency
+
+```
+Time Efficiency = Elapsed time / Time limit × 100
+```
+
+Measures what fraction of the requested wall-clock time was actually used.
+
+
