@@ -4,7 +4,7 @@
 
 ## Introduction
 
-An HPC cluster is a shared resource — and like any shared resource, how we use it affects everyone. Every CPU core reserved but unused, every gigabyte of memory allocated but never touched, is a resource that another researcher's job is queuing for. As part of King's Sustainability Month in February, we analysed six months of job data (July–December 2025) from the CREATE HPC cluster to find out: how efficiently are we actually using our resources?
+An HPC cluster is a shared resource — and like any shared resource, how we use it affects everyone. Every CPU core reserved but unused, every gigabyte of memory allocated but never touched, is a resource that another researcher's job is queuing for. As part of [King's Climate and Sustainability Month](https://www.kcl.ac.uk/climate-sustainability/take-action/kings-sustainability-month) in February, we analysed six months of job data (July–December 2025) from the CREATE HPC cluster to find out: how efficiently are we actually using our resources?
 
 The short answer: there's significant room for improvement. Across ~2.9 million analysed jobs, the **average CPU efficiency was 60%** and the **average memory efficiency was just 19%**. These findings were one of the motivations behind launching [`seff`](https://forum.er.kcl.ac.uk/t/new-tool-available-measuring-and-improving-the-efficiency-of-your-hpc-jobs/3269), a tool that lets you check the efficiency of any completed job with a single command. This post presents the full picture — how efficient jobs are across CPU, memory, and time, where the waste is concentrated, how faculties compare, and what you can do about it.
 
@@ -137,6 +137,12 @@ Before reading too much into the very low time efficiency numbers: the cluster a
 
 As noted above, time works differently from CPU and memory: once a job finishes, resources are released immediately, so unused time doesn't block them in the same way as unused CPU or memory do. It does, however, increase queue wait time, because the scheduler must find a slot where resources are free for the full requested duration. Requesting a realistic time limit helps your jobs start sooner.
 
+#### A Note on Efficiency and Scale
+
+The efficiency numbers in this post treat every job equally, regardless of size. However, a large job with low efficiency wastes far more cluster resources than a small one. A single-CPU job at 20% efficiency wastes nothing — it's using its one core. A 64-core job at 20% efficiency leaves ~51 cores sitting idle. Similarly, a job using 500 MB of a 1 GiB memory allocation wastes very little, while one using 500 MB of a 100 GiB allocation locks away nearly 100 GiB.
+
+Thus, while the headline efficiency numbers may look alarming across the board, the biggest concern is not the many small jobs, but the smaller number of large jobs that over-request by dozens of CPU cores or tens to hundreds of GiB of memory.
+
 ### Are CPU-Efficient Jobs Also Memory-Efficient?
 
 So far, we've looked at CPU, memory, and time efficiency separately. But are they related? For example, do jobs that use their CPUs well also tend to use their memory well?
@@ -174,7 +180,7 @@ Over 37,000 jobs (1.3%) requested more than 1 TiB of memory — and 99.6% of the
 
 ### Time
 
-Figure 11 depicts the distribution of time requests. About a third of jobs (~31%) request up to an hour, and the vast majority (~87%) request a day or less. The maximum allowed wall time is 48 hours for batch jobs and 4 hours for interactive jobs — but the default, if you don't specify a time limit, is 24 hours for the former, and 1 hour for the latter. The most common choice is 24 hours (the default for batch jobs), accounting for 23% of all jobs. 
+Figure 11 depicts the distribution of time requests. About a third of jobs (~31%) request up to an hour, and the vast majority (~87%) request a day or less. On standard partitions, the maximum allowed wall time is 48 hours for batch jobs. For interactive jobs, users must specify a time limit of up to 4 hours. The default for batch jobs is 24 hours — and it shows: 23% of all jobs use exactly this value, making it the most common choice by far. 
 
 For more stats related to time requests, have a look at the [Appendix](#time-request-details).
 
@@ -232,14 +238,13 @@ The abbreviations used in the plots below are:
 | **KBS**      | King's Business School |
 | **AH**       | Faculty of Arts & Humanities |
 | **DPSL**     | The Dickson Poon School of Law |
-| **IT**       | IT |
-| **Other**    | Research Management & Innovation, Students & Education, and Others |
+| **Other**    | IT, Research Management & Innovation, Students & Education, and "Other" (a literal category in Active Directory) |
 | **N/A**      | Unknown faculty (Active Directory lookup failed) |
 
 ### Job Outcomes by Faculty
 Let's first look at who submits the most jobs. Figure 14 shows the outcome of all ~3.7 million submitted jobs, broken down by faculty. The four largest users by job volume are NMES, IoPPN, DOCS, and LSM.
 
-![Faculty Job Outcomes](../../results/plots/2026-02_sustainability/faculty_job_outcomes.png)
+![Faculty Job Outcomes](../../results/plots/2026-02_sustainability/faculty_job_outcomes_merged.png)
 *Figure 14: Job outcomes by faculty. Numbers at the tip of each bar show the approximate total number of jobs submitted per faculty.*
 
 ### Efficiency By Faculty
@@ -260,7 +265,7 @@ We analysed ~2.9 million jobs on CREATE HPC from July to December 2025, looking 
 - **CPU efficiency is a tale of two halves.** Single-CPU jobs are generally well utilised (median 96%), but multi-CPU jobs average just 32% — many jobs request multiple cores without the code actually using them. This is the single biggest driver of CPU waste.
 - **Memory is over-requested almost everywhere.** The median job uses just 8.5% of its requested memory. For jobs using the default 1 GiB request, this isn't necessarily a concern — the real waste comes from jobs requesting tens or hundreds of GiB while using only a fraction.
 - **Time limits are rarely tight.** The median job finishes using 2% of its requested wall time, largely because many jobs use the 24-hour default without adjusting it.
-- **CPU requests cluster around round numbers and powers of two**.There are good reasons to choose powers of two (see [previous section on CPU requests](#cpus)), but whether a particular job actually benefits depends on the code and the computational pipeline.
+- **CPU requests cluster around round numbers and powers of two**. There are good reasons to choose powers of two (see [previous section on CPU requests](#cpus)), but whether a particular job actually benefits depends on the code and the computational pipeline.
 - **CPU efficiency varies by faculty; memory and time efficiency do not.** Some faculties achieve genuinely good CPU efficiency, while others are poor — but memory and time over-requesting are shared habits across all groups.
 
 The good news: most of this is straightforward to fix. The next section covers concrete steps you can take to right-size your resource requests.
@@ -271,15 +276,17 @@ Having seen where the inefficiency lies, what can you do about it? Here are six 
 
 1. **Make `seff` a habit.** Whenever you're unsure whether your resource requests are right, run `seff <jobid>` to see your CPU, memory, and GPU efficiency. It takes seconds and tells you immediately whether your resource requests are in the right ballpark. See our [detailed guide on seff and improving job efficiency](https://forum.er.kcl.ac.uk/t/new-tool-available-measuring-and-improving-the-efficiency-of-your-hpc-jobs/3269) for worked examples.
 
-2. **Don't accept defaults blindly.** Every job uses at least one CPU core, but the default time and memory limits may be far more than you need. Think about what your job actually requires before submitting — don't leave defaults in place simply because it's easy.
+2. **Prioritise your largest jobs.** A small job with low efficiency wastes little, but a job requesting 64 cores or 100 GiB of memory that only uses a fraction locks away resources at scale and increases queue times for everyone. If you run a mix of small and large jobs, focus your efficiency efforts on the big ones first — that's where right-sizing has the most impact.
 
-3. **Question your CPU count.** 75% of multi-CPU jobs used less than half their requested CPU time. CPU efficiency drops sharply once jobs request more than the default of one core. Before requesting multiple cores, consider two things. First, can your computation be parallelised at all? Some algorithms are inherently sequential — no amount of cores will speed them up. Second, even if your computational problem can be parallelised in principle, does your code actually use multiple cores? Many programs need explicit flags, libraries, or code changes to run in parallel — without them, only one core does the work while the rest sits idle. If you're unsure on either point, seek out training or help before scaling up.
+3. **Don't accept defaults blindly.** Every job uses at least one CPU core, but the default time and memory limits may be far more than you need. Think about what your job actually requires before submitting — don't leave defaults in place simply because it's easy.
 
-4. **Don't ignore memory.** 85% of jobs used less than half their requested memory. If you've never checked, there's a good chance you're over-requesting. Use `seff` to find your actual peak usage and request that plus a 10–20% buffer.
+4. **Question your CPU count in multi-CPU jobs.** 75% of multi-CPU jobs used less than half their requested CPU time. CPU efficiency drops sharply once jobs request more than the default of one core. Before requesting multiple cores, consider two things. First, can your computation be parallelised at all? Some algorithms are inherently sequential — no amount of cores will speed them up. Second, even if your computational problem can be parallelised in principle, does your code actually use multiple cores? Many programs need explicit flags, libraries, or code changes to run in parallel — without them, only one core does the work while the rest sits idle. If you're unsure on either point, seek out training or help before scaling up.
 
-5. **Tighten your time limits.** 92% of jobs used less than half the requested time. While over-requesting time doesn't waste resources directly, it increases your queue wait time. If your job takes 2 hours, request 3 — not 24.
+5. **Don't ignore memory.** 85% of jobs used less than half their requested memory. If you've never checked, there's a good chance you're over-requesting. Use `seff` to find your actual peak usage and request that plus a 10–20% buffer.
 
-6. **Break up complex pipelines.** If only some stages of your workflow need many CPUs or lots of memory, split them into separate jobs with appropriate requests for each stage, rather than requesting the maximum for the entire pipeline.
+6. **Tighten your time limits.** 92% of jobs used less than half the requested time. While over-requesting time doesn't waste resources directly, it increases your queue wait time. If your job takes 2 hours, request 3 — not 24.
+
+7. **Break up complex pipelines.** If only some stages of your workflow need many CPUs or lots of memory, split them into separate jobs with appropriate requests for each stage, rather than requesting the maximum for the entire pipeline.
 
 ### Getting help
 
