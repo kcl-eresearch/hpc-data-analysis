@@ -72,15 +72,29 @@ pip install -e ".[notebook]"
 
 ## Configuration
 
-Create a `config.yaml` with MySQL connection details:
+The tools rely on two configuration files. Both hold credentials and are kept out of version control.
 
-```yaml
-mysql:
-    host: <hostname>
-    user: <user>
-    password: <password>
-    database: <slurm_acct_db>
+### `config.yaml` — MySQL (you create this)
+
+Connection details for the Slurm accounting database. Copy the template and fill in the values provided by the infrastructure team:
+
+```bash
+cp config.yaml.example config.yaml
 ```
+
+It lives in the project root and is gitignored, so it is never committed. The accounting database is reachable only from the cluster, so run the tools there. The two analysis commands default to `config.yaml` in the directory you run them from; if it lives elsewhere, point them at it with `--config <path>`.
+
+### `/etc/hpc_export_stats.yaml` — LDAP (infra-managed)
+
+Only needed when mapping users to faculties (`--collate_by st=faculty` or `--include-faculty`). This file is provisioned and maintained by the infrastructure team on the cluster — you do not create or edit it, but it must exist for faculty lookups to work. The two analysis commands default to `/etc/hpc_export_stats.yaml`; if your file lives elsewhere, override the path with `--ad_config <path>`. It contains the following keys:
+
+| Key | Meaning |
+|-----|---------|
+| `ldap_host` | AD/LDAP server hostname (connected to via `ldaps://`) |
+| `ldap_ca_file` | path to the CA certificate file used to verify the TLS connection |
+| `ldap_users_ou` | base OU searched for user accounts |
+| `ldap_binddn` | bind DN used to authenticate |
+| `ldap_password` | bind account password |
 
 ## Usage
 

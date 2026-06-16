@@ -1,0 +1,15 @@
+# MySQL connection details for the Slurm accounting database — template.
+#
+# Copy this file to `config.yaml` (same directory) and fill in the values
+# (obtain them from the infrastructure team):
+#     cp config.yaml.example config.yaml
+#
+# `config.yaml` is gitignored and must never be committed — it holds a
+# database password. The accounting database is reachable only from the
+# cluster, so run the tools and dev scripts there.
+
+mysql:
+  host:        # database server hostname
+  user:        # database username (read-only account)
+  password:    # database password (secret)
+  database:    # Slurm accounting database name
