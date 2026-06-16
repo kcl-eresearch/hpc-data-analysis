@@ -40,7 +40,7 @@ For more details on which states were included and why, have a look at the [Appe
 
 In Figure 1, we can see that about three quarters of all submitted jobs completed successfully. Notably, `OUT_OF_MEMORY` — the state assigned when a job is killed for exceeding its memory allocation — is absent from the plot because memory limits were not yet enforced during this period.
 
-![job_state_distribution](../../images/hpc-data-analysis/job_state_distribution.png)
+![job_state_distribution](../../results/plots/2026-02_sustainability/job_state_distribution.png)
 *Figure 1: Job state distribution.*
 
 ### Efficiency Averages and Distributions
@@ -71,14 +71,14 @@ For each metric, we start with the headline averages and then look at the full d
 
 The average CPU efficiency across all jobs is 60%, with a median of 71%. Figure 2 shows the full distribution. There's a reassuring peak near 100%, but also a long tail stretching all the way down — with a second concentration of jobs in the 0–15% range, suggesting a substantial number of jobs barely use their CPUs at all.
 
-![cpu_efficiency_density](../../images/hpc-data-analysis/cpu_efficiency_density.png)
+![cpu_efficiency_density](../../results/plots/2026-02_sustainability/cpu_efficiency_density.png)
 *Figure 2: CPU efficiency distribution.*
 
 The picture changes dramatically when we separate **single-CPU** and **multi-CPU jobs** (Figure 3). Single-CPU jobs make up ~58% of all jobs and show a strong peak near 100% — most are using their one core well. Multi-CPU jobs (~42% of all jobs) tell a different story: the highest density sits in the 0–20% range, suggesting that many jobs request multiple cores but barely use them — likely because the code isn't parallelised, or can't effectively use all the cores requested.
 
 When you request multiple CPUs, the expectation is that your code splits its work across all of them in parallel. If it doesn't — either because the software needs to be explicitly told to use multiple cores (e.g., via a library), or because only parts of the computation can actually run in parallel — you end up with reserved cores sitting idle.
 
-![cpu_efficiency_density_split](../../images/hpc-data-analysis/cpu_efficiency_density_split.png)
+![cpu_efficiency_density_split](../../results/plots/2026-02_sustainability/cpu_efficiency_density_split.png)
 *Figure 3: CPU efficiency by request size. Left: Jobs requesting one CPU. Right: Jobs requesting more than one CPU. Note that the y-axis scales differ between panels.*
 
 The gap is stark: single-CPU jobs have a mean CPU efficiency of 82% and a median of 96% — solidly "excellent". Multi-CPU jobs average just 32%, with a median of 19%. This is the single biggest driver of CPU inefficiency on the cluster.
@@ -94,12 +94,12 @@ The gap is stark: single-CPU jobs have a mean CPU efficiency of 82% and a median
 
 The average memory efficiency is 19%, with a median of just 9%. Figure 4 shows the distribution. Unlike CPU efficiency, there is no peak near 100%. Instead, the distribution is dominated by a spike near 0%, with most of the density sitting below 10%. Small bumps around 55% and 85% suggest pockets of jobs with better- or well-sized memory requests, but they are the exception.
 
-![mem_efficiency_density](../../images/hpc-data-analysis/mem_efficiency_density.png)
+![mem_efficiency_density](../../results/plots/2026-02_sustainability/mem_efficiency_density.png)
 *Figure 4: Memory efficiency distribution.*
 
 Figure 5 separates jobs by how much memory they requested. Jobs requesting ≤1 GiB (~28% of all jobs) show density spread across the 0–30% range with a notable bump near 85–95%, indicating that a significant share of these smaller requests are well-sized. Jobs requesting more than 1 GiB (~72% of all jobs) are a different story: nearly all the density is concentrated near 0%, with very little beyond 20%.
 
-![mem_efficiency_density_split](../../images/hpc-data-analysis/mem_efficiency_density_split.png)
+![mem_efficiency_density_split](../../results/plots/2026-02_sustainability/mem_efficiency_density_split.png)
 *Figure 5: Memory efficiency by request size. Left: Jobs requesting ≤ 1 GiB of memory. Right: Jobs requesting more than 1 GiB. Note that the y-axis scales differ between panels.*
 
 Neither group fares well (Table 2): jobs requesting ≤1 GiB have a mean of 24% and a median of 15% efficiency. Jobs requesting more than 1 GiB have an average of 18% with a median of just 4%. Unlike CPU, where single-resource jobs are generally fine, memory efficiency is low across both groups.
@@ -115,12 +115,12 @@ Neither group fares well (Table 2): jobs requesting ≤1 GiB have a mean of 24% 
 
 The average time efficiency is 12%, with a median of just 2%. Figure 6 shows the distribution — the vast majority of jobs finish using only a small fraction of their requested wall time, with most of the density concentrated near 0%. Unlike CPU and memory, there is essentially no peak near 100%.
 
-![time_efficiency_density](../../images/hpc-data-analysis/time_efficiency_density.png)
+![time_efficiency_density](../../results/plots/2026-02_sustainability/time_efficiency_density.png)
 *Figure 6: Time efficiency distribution.*
 
 Figure 7 separates jobs by how much time they requested. Jobs with short time limits (≤1 hour, ~31% of all jobs) show a more spread-out distribution, with visible density across the range. Jobs with longer time limits (>1 hour, ~69% of all jobs) are mostly concentrated near 0%.
 
-![time_efficiency_density_split](../../images/hpc-data-analysis/time_efficiency_density_split.png)
+![time_efficiency_density_split](../../results/plots/2026-02_sustainability/time_efficiency_density_split.png)
 *Figure 7: Time efficiency by request length. Left: Jobs with time limits ≤ 1 hour. Right: Jobs with time limits > 1 hour. Note that the y-axis scales differ between panels.*
 
 The averages and medians bear this out (Table 3): short-limit jobs have a mean time efficiency of ~20% and a median of 12%. Long-limit jobs average just 8%, with a median of 0.5%.
@@ -189,7 +189,7 @@ So far, we've looked at CPU, memory, and time efficiency separately. But are the
 
 There is a moderate positive correlation between CPU and memory efficiency — jobs that use their CPUs well tend to use their memory reasonably well too (see Figure 8). But this relationship breaks down for the most CPU-efficient jobs: a large fraction of jobs with high CPU efficiency remain memory-inefficient; while parallelisation is done right, memory requests are often not sized accurately. (For details on the statistical methods used, see the [Appendix](#cpu-memory-correlation-methodology).)
 
-![cpu_vs_mem_efficiency](../../images/hpc-data-analysis/cpu_vs_mem_efficiency.png)
+![cpu_vs_mem_efficiency](../../results/plots/2026-02_sustainability/cpu_vs_mem_efficiency.png)
 *Figure 8: CPU efficiency vs memory efficiency. Each cell groups jobs into a 10% × 10% efficiency bin; colour indicates how many jobs fall in that bin (log scale).*
 
 ## What Resources Are People Requesting?
@@ -204,7 +204,7 @@ Figure 9 depicts the distribution of CPU requests on a log scale. As we've alrea
 
 Requests cluster around powers of two (8, 16, 32, 64) and round numbers (100, 1000). The former is no coincidence — powers of two have established themselves as a sensible default because some parallelisation frameworks (e. g., [MPI's collective operations](https://mpitutorial.com/tutorials/mpi-broadcast-and-collective-communication/)) distribute work most efficiently with them: if you have a set of tasks to distribute, a power-of-two number of CPUs lets you split the work in half, then in half again, and so on — each split is perfectly even, with no remainder. For example, 12 tasks split evenly across 2 CPUs (6 each), then across 4 (3 each) — but not across 5.
 
-![cpus_requested_distribution](../../images/hpc-data-analysis/cpus_requested_distribution.png)
+![cpus_requested_distribution](../../results/plots/2026-02_sustainability/cpus_requested_distribution.png)
 *Figure 9: Distribution of requested CPUs (on a log scale).*
 
 ### Memory
@@ -215,7 +215,7 @@ Two anomalous peaks stand out in the tail: one around 5,000–10,000 GiB and ano
 
 Over 37,000 jobs (1.3%) requested more than 1 TiB of memory — and 99.6% of them used the per-CPU memory option. Of these, over 36,000 jobs all request the same amount: 150 GiB per CPU. All >1 TiB requests come from just 25 users, each submitting large batches of jobs with massively inflated memory reservations — while their median actual memory usage is only 0.85 GiB.
 
-![memory_requested_distribution](../../images/hpc-data-analysis/memory_requested_distribution.png)
+![memory_requested_distribution](../../results/plots/2026-02_sustainability/memory_requested_distribution.png)
 *Figure 10: Distribution of requested memory (on a log scale).*
 
 ### Time
@@ -224,7 +224,7 @@ Figure 11 depicts the distribution of time requests. About a third of jobs (~31%
 
 For more stats related to time requests, have a look at the [Appendix](#time-request-details).
 
-![time_requested_distribution_binned](../../images/hpc-data-analysis/time_requested_distribution_binned.png)
+![time_requested_distribution_binned](../../results/plots/2026-02_sustainability/time_requested_distribution_binned.png)
 *Figure 11: Distribution of requested time limits.*
 
 ### Wait Times
@@ -241,7 +241,7 @@ This is overall good news! Yet tighter resource requests could make this even be
 
 *Table 4: Wait times for a job to get started.*
 
-![wait_time_distribution](../../images/hpc-data-analysis/wait_time_distribution.png)
+![wait_time_distribution](../../results/plots/2026-02_sustainability/wait_time_distribution.png)
 *Figure 12: Wait time distribution.*
 
 ## How Much of Those Resources Goes to Waste?
@@ -254,7 +254,7 @@ For CPU, the picture is mixed: about 43% of jobs fall into the "excellent" categ
 
 Among multi-CPU jobs specifically, ~620k (51%) fall into the "very poor" category — using less than 20% of their requested CPU time. Among jobs requesting more than 1 GiB of memory, ~1.3M (69%) are likewise "very poor".
 
-![severity_barplot](../../images/hpc-data-analysis/severity_barplot.png)
+![severity_barplot](../../results/plots/2026-02_sustainability/severity_barplot.png)
 *Figure 13: Waste severity breakdown. Each bar shows the percentage of jobs falling into each waste category. Labels on top of the bars indicate the approximate job count and percentage per category.*
 
 The [Appendix](#requested-vs-used) includes scatter plots of requested vs. actually used resources for CPU, memory, and time, showing where individual jobs land relative to the ideal 1:1 mapping and offering a more granular view than the grouped distributions above.
@@ -284,7 +284,7 @@ The abbreviations used in the plots below are:
 
 Let's first look at who submits the most jobs. Figure 14 shows the outcome of all ~3.7 million submitted jobs, broken down by faculty. The four largest users by job volume are NMES, IoPPN, DOCS, and LSM.
 
-![faculty_job_outcomes_merged](../../images/hpc-data-analysis/faculty_job_outcomes_merged.png)
+![faculty_job_outcomes_merged](../../results/plots/2026-02_sustainability/faculty_job_outcomes_merged.png)
 *Figure 14: Job outcomes by faculty. Numbers at the tip of each bar show the approximate total number of jobs submitted per faculty.*
 
 ### Efficiency Results by Faculty
@@ -293,7 +293,7 @@ How do faculties compare on efficiency? Figure 15 shows boxplots of CPU, memory,
 
 For CPU efficiency, SSPP leads with over 80%, followed closely by NMES (who submit far more jobs). Roughly half the faculties sit above 50% CPU efficiency, while the rest fall below. For memory efficiency, the picture is more uniformly bleak: no faculty exceeds 25% on average. Similarly, time efficiency is universally low, with no faculty exceeding 20% on average.
 
-![faculty_efficiency_boxplots](../../images/hpc-data-analysis/faculty_efficiency_boxplots.png)
+![faculty_efficiency_boxplots](../../results/plots/2026-02_sustainability/faculty_efficiency_boxplots.png)
 *Figure 15: CPU, memory, and time efficiency by faculty, ranked from highest to lowest average. Boxes show the interquartile range (25th–75th percentile) with the median as a line. Whiskers extend to 1.5× the interquartile range. Diamonds show the mean with 95% confidence intervals. Faculties with fewer than 50 jobs are excluded.*
 
 Looking across all three metrics, NMES and SSPP consistently rank near the top — though even they have substantial room to improve on memory and time.
@@ -409,11 +409,11 @@ For all three resources, the scatter falls predominantly below the diagonal — 
 - Memory (Figure A2): dense vertical columns at round request values (1, 4, 8, 64, 100 GiB) show that within each common request size, actual usage spans orders of magnitude. At the far right, jobs requesting TiBs of memory use only MiBs to a few GiBs — these are the extreme over-reservations from the main text.
 - Wall time (Figure A3): vertical lines at common time limits (1 h, 6 h, 24 h, 2 days) dominate. The 24-hour default stands out most: a dense column of jobs that requested a full day but finished anywhere from seconds to a few hours.
 
-![cpu_requested_vs_used](../../images/hpc-data-analysis/cpu_requested_vs_used.png)
+![cpu_requested_vs_used](../../results/plots/2026-02_sustainability/cpu_requested_vs_used.png)
 *Figure A1: CPU time — requested vs used. Each dot is one job; colour indicates efficiency.*
 
-![mem_requested_vs_used](../../images/hpc-data-analysis/mem_requested_vs_used.png)
+![mem_requested_vs_used](../../results/plots/2026-02_sustainability/mem_requested_vs_used.png)
 *Figure A2: Memory — requested vs used. Each dot is one job; colour indicates efficiency.*
 
-![time_requested_vs_used](../../images/hpc-data-analysis/time_requested_vs_used.png)
+![time_requested_vs_used](../../results/plots/2026-02_sustainability/time_requested_vs_used.png)
 *Figure A3: Wall time — requested vs used. Each dot is one job; colour indicates efficiency.*
