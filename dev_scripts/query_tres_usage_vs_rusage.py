@@ -40,8 +40,9 @@ import mysql.connector
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "output_tres_usage_vs_rusage.txt"
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_tres_usage_vs_rusage.txt"
 TRES_CPU_ID = 1
 
 

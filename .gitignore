@@ -5,6 +5,10 @@ config.yaml
 *.csv
 results/*
 !results/plots/
+# Track the data/ folder structure (via .gitkeep) but not the generated CSVs in it
+!results/data/
+results/data/*
+!results/data/.gitkeep
 original_code/
 
 # Documentation (draft - to review before making public)

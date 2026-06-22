@@ -36,8 +36,9 @@ import sys
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "output_faculty_stats.csv"
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_faculty_stats.csv"
 # Config
 START_DATE = '2025-01-01'
 END_DATE = '2025-02-01'

@@ -52,8 +52,9 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 from hpc_data_analysis.slurm_utils import discover_special_steps
 
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "output_sacct_steps.txt"
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_sacct_steps.txt"
 FIELDS = "JobID,JobName,State,Elapsed,TotalCPU,MaxRSS,AllocCPUs,ReqMem,NTasks"
 
 with open(CONFIG_FILE, "r") as cf:

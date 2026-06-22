@@ -20,8 +20,9 @@ import yaml
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "output_table_defs.txt"
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_table_defs.txt"
 with open(CONFIG_FILE, "r") as f:
     config = yaml.safe_load(f)
 mysql_conf = config["mysql"]

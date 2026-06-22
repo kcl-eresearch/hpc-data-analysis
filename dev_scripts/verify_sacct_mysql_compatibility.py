@@ -28,9 +28,9 @@ SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 SACCT_FILE = SCRIPT_DIR / "sacct_jobs_2weeks_july.csv"
 DB_FILE = PROJECT_ROOT / "results" / "2025-07-01_2025-12-31_job_level_metrics.csv"
-OUTPUT_FILE = SCRIPT_DIR / "output_verify_sacct_mysql_compatibility.txt"
-
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_verify_sacct_mysql_compatibility.txt"
 def out(text=""):
     print(text)
     print(text, file=outf)

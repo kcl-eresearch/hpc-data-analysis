@@ -31,8 +31,9 @@ import yaml
 SCRIPT_DIR = Path(__file__).parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "output_memory.txt"
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_memory.txt"
 def parse_tres_value(tres_string, tres_id):
     if not tres_string:
         return 0

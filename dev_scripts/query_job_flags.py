@@ -63,8 +63,9 @@ while not (PROJECT_ROOT / "config.yaml").exists():
     PROJECT_ROOT = PROJECT_ROOT.parent
 
 CONFIG_FILE = PROJECT_ROOT / "config.yaml"
-OUTPUT_FILE = SCRIPT_DIR / "output_job_flags.txt"
-
+OUTPUT_DIR = SCRIPT_DIR / "output"
+OUTPUT_DIR.mkdir(exist_ok=True)
+OUTPUT_FILE = OUTPUT_DIR / "output_job_flags.txt"
 with open(CONFIG_FILE, "r") as f:
     config = yaml.safe_load(f)
 mysql_conf = config["mysql"]

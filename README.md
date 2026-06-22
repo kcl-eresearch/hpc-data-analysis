@@ -28,12 +28,19 @@ hpc-data-analysis/
 │   ├── analysis/                           # Documentation for analysts
 │   └── development/                        # Documentation for developers
 ├── notebooks/
+│   ├── blog_2026-02_sustainability.ipynb   # Blog-post plots (user perspective)
 │   ├── visualisation_users.ipynb           # User-focused: average efficiency metrics
 │   └── visualisation_infrastructure.ipynb  # Infrastructure-focused: weighted efficiency metrics
-├── dev_scripts/                            # Diagnostic queries and their output
-├── results/                                # Generated CSV output (gitignored)
-├── pyproject.toml                          # Package metadata and dependencies
+├── dev_scripts/                            # Diagnostic query scripts
+│   └── output/                             # ...and their saved output
+├── results/
+│   ├── data/                               # Generated CSV output (gitignored)
+│   └── plots/                              # Generated figures (committed)
+├── pyproject.toml                          # Package metadata and dependency ranges
+├── requirements.txt                        # Pinned dependency versions (reproducible env)
+├── config.yaml.example                     # Template for config.yaml
 ├── config.yaml                             # MySQL credentials (not committed)
+├── LICENSE
 └── README.md
 ```
 
@@ -46,29 +53,56 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-Create the results directory:
+Create the data output directory (where the CLI tools write generated CSVs):
 
 ```bash
-mkdir results
+mkdir -p results/data
 ```
 
-Install the package:
+Install the package. Choose based on what you need:
 
 ```bash
+# Core CLI tools only (query the database, write CSVs):
 pip install .
-```
 
-For notebook support:
-
-```bash
+# ...plus the notebook dependencies (pandas, matplotlib, seaborn, scipy, etc.):
 pip install ".[notebook]"
-```
 
-For development (editable install):
-
-```bash
+# For development: an "editable" install that links the package to this
+# source tree, so code edits take effect immediately without reinstalling:
 pip install -e ".[notebook]"
 ```
+
+`[notebook]` is an optional dependency group — the core tools don't need
+pandas/seaborn/etc., so omitting it keeps the environment light for anyone who
+only runs the CLI tools (and not the visualisation notebooks).
+
+To reproduce the exact dependency versions this project was developed and
+tested with, install the pinned set first, then the package itself:
+
+```bash
+pip install -r requirements.txt
+pip install .            # or  pip install -e .  for development
+```
+
+`requirements.txt` pins every dependency (a reproducible snapshot);
+`pyproject.toml` declares the looser compatible ranges used when you install
+the package directly.
+
+### Verify your installation
+
+Confirm the package and its dependencies import in your *active* environment:
+
+```bash
+hpc-aggregate-stats --help     # package + entry point + core deps (mysql.connector, ldap, yaml)
+python3 -c "import pandas, numpy, matplotlib, seaborn, scipy, statsmodels; print('notebook deps OK')"
+```
+
+This only checks that everything is installed and importable — not that the
+database is reachable or your credentials work (that requires the cluster; see
+[Usage](#usage)). If the first command says "command not found", the package
+didn't install into your active environment — use the `PYTHONPATH` fallback
+shown under Usage.
 
 ## Configuration
 
@@ -98,15 +132,24 @@ Only needed when mapping users to faculties (`--collate_by st=faculty` or `--inc
 
 ## Usage
 
-Run from the repository root directory.
+Run from the repository root. The examples use the installed console commands
+(`hpc-aggregate-stats`, `hpc-job-stats`), available after `pip install`. The
+accounting database is reachable only from the cluster, so run these there.
+
+> **If a command is "not found"** (common on shared/cloud systems where the
+> package didn't install into the active Python environment), run the module
+> directly with the source on the path instead — the arguments are identical:
+> ```bash
+> PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats ...
+> ```
 
 ### 1. Generate aggregate faculty statistics
 
 ```bash
-PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats \
+hpc-aggregate-stats \
     --since 2025-01-01 --until 2025-02-01 \
     --collate_by st=faculty --collate_by none \
-    --output results/hpc_stats_output.csv
+    --output results/data/hpc_stats_output.csv
 ```
 
 - `--collate_by st=faculty`: Groups stats by faculty (LDAP attribute)
@@ -115,20 +158,31 @@ PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats \
 ### 2. Generate per-job metrics
 
 ```bash
-PYTHONPATH=src python3 -m hpc_data_analysis.job_stats \
+hpc-job-stats \
     --since 2025-01-01 --until 2025-02-01 \
-    --output results/job_level_metrics.csv --include-faculty
+    --output results/data/job_level_metrics.csv --include-faculty
 ```
+
+> **Output filenames are auto-prefixed with the date range.** The command above
+> actually writes `results/data/2025-01-01_2025-02-01_job_level_metrics.csv`,
+> not the bare name you passed. Generated CSVs contain usernames, so they are
+> gitignored and never committed.
+
+These two commands are also how you **regenerate the data** the notebooks read —
+both require cluster database access (and LDAP access for the `--collate_by` /
+`--include-faculty` faculty lookups).
 
 ### 3. Run the notebooks
 
-Two notebooks are provided for different audiences:
+Three notebooks are provided:
+
+- **`notebooks/blog_2026-02_sustainability.ipynb`** — generates the publication-ready plots for the sustainability blog post (user perspective, **average efficiency**). Holds the most polished plotting code.
 
 - **`notebooks/visualisation_users.ipynb`** — User-focused analysis using **average efficiency** (each job counts equally). Use this for user training, feedback sessions, and helping users understand typical job efficiency.
 
 - **`notebooks/visualisation_infrastructure.ipynb`** — Infrastructure-focused analysis using **weighted efficiency** (larger jobs contribute more). Use this for capacity planning, resource allocation decisions, and understanding overall cluster utilisation.
 
-Both notebooks read the CSV files generated above and include a Technical Appendix documenting the methodology.
+The notebooks read the CSV files generated in steps 1–2 (from `results/data/`) and include a Technical Appendix documenting the methodology.
 
 ## What it computes
 
