@@ -2,18 +2,6 @@
 
 Analyses HPC cluster usage by faculty, with a focus on resource efficiency (CPU, memory, time). Queries the Slurm accounting database (MySQL) directly and maps users to faculties via LDAP.
 
-## Documentation
-
-- **For analysts** interpreting results: see [`docs/analysis/`](docs/analysis/index.md)
-  - How efficiency metrics are calculated
-  - What good/bad efficiency looks like
-  - Known limitations and caveats
-
-- **For developers** working on the codebase: see [`docs/development/`](docs/development/index.md)
-  - Slurm database schema
-  - CPU and memory accounting details
-  - Dev scripts guide
-
 ## Structure
 
 ```
@@ -28,9 +16,9 @@ hpc-data-analysis/
 │   ├── analysis/                           # Documentation for analysts
 │   └── development/                        # Documentation for developers
 ├── notebooks/
-│   ├── blog_2026-02_sustainability.ipynb   # Blog-post plots (user perspective)
-│   ├── visualisation_users.ipynb           # User-focused: average efficiency metrics
-│   └── visualisation_infrastructure.ipynb  # Infrastructure-focused: weighted efficiency metrics
+│   ├── 2026-02_sustainability_month_blog_post.ipynb  # Blog-post plots (user perspective)
+│   ├── visualisation_users.ipynb                     # User-focused: average efficiency metrics
+│   └── visualisation_infrastructure.ipynb            # Infrastructure-focused: weighted efficiency metrics
 ├── dev_scripts/                            # Diagnostic query scripts
 │   └── output/                             # ...and their saved output
 ├── results/
@@ -46,6 +34,13 @@ hpc-data-analysis/
 
 ## Installation
 
+This project runs in two stages, typically on two machines:
+
+1. **Generate the data** (core analysis) — the CLI tools (`hpc-aggregate-stats`, `hpc-job-stats`) query the Slurm accounting database and write CSVs with per-job and per-faculty efficiency stats. The database is reachable only from the **cluster**, so this stage runs there, and needs only the core install (`pip install .`).
+2. **Explore the results** (further analysis) — the notebooks read those CSVs and produce the visualisations. They need no database access, so this stage runs wherever you work (usually **locally**), and needs the notebook dependencies (`pip install ".[notebook]"`). The CSVs are generated on the cluster in stage 1, so copy them into `results/data/` on your local machine first.
+
+Creating the virtual environment is the same on both machines; only the install command differs by stage (shown below).
+
 Create and activate a virtual environment:
 
 ```bash
@@ -53,41 +48,32 @@ python3 -m venv venv
 source venv/bin/activate
 ```
 
-Create the data output directory (where the CLI tools write generated CSVs):
+Install the package. Choose based on the stage you are setting up:
 
 ```bash
-mkdir -p results/data
-```
-
-Install the package. Choose based on what you need:
-
-```bash
-# Core CLI tools only (query the database, write CSVs):
+# Stage 1 — core CLI tools only (query the database, write CSVs).
+# Run on the cluster, where the database is reachable:
 pip install .
 
-# ...plus the notebook dependencies (pandas, matplotlib, seaborn, scipy, etc.):
+# Stage 2 — also the notebook dependencies (pandas, matplotlib, seaborn,
+# scipy, etc.). Run locally, where you explore the generated CSVs:
 pip install ".[notebook]"
 
-# For development: an "editable" install that links the package to this
-# source tree, so code edits take effect immediately without reinstalling:
+# For development on either machine — an "editable" install that links the
+# package to this source tree, so code edits take effect without reinstalling:
 pip install -e ".[notebook]"
 ```
 
-`[notebook]` is an optional dependency group — the core tools don't need
-pandas/seaborn/etc., so omitting it keeps the environment light for anyone who
-only runs the CLI tools (and not the visualisation notebooks).
+`[notebook]` is an optional dependency group — the core tools don't need pandas/seaborn/etc., so omitting it keeps the environment light for anyone who only runs the CLI tools (and not the visualisation notebooks).
 
-To reproduce the exact dependency versions this project was developed and
-tested with, install the pinned set first, then the package itself:
+To reproduce the exact dependency versions this project was developed and tested with, install the pinned set first, then the package itself:
 
 ```bash
 pip install -r requirements.txt
 pip install .            # or  pip install -e .  for development
 ```
 
-`requirements.txt` pins every dependency (a reproducible snapshot);
-`pyproject.toml` declares the looser compatible ranges used when you install
-the package directly.
+`requirements.txt` pins every dependency (a reproducible snapshot); `pyproject.toml` declares the looser compatible ranges used when you install the package directly.
 
 ### Verify your installation
 
@@ -98,15 +84,11 @@ hpc-aggregate-stats --help     # package + entry point + core deps (mysql.connec
 python3 -c "import pandas, numpy, matplotlib, seaborn, scipy, statsmodels; print('notebook deps OK')"
 ```
 
-This only checks that everything is installed and importable — not that the
-database is reachable or your credentials work (that requires the cluster; see
-[Usage](#usage)). If the first command says "command not found", the package
-didn't install into your active environment — use the `PYTHONPATH` fallback
-shown under Usage.
+This only checks that everything is installed and importable — not that the database is reachable or your credentials work (that needs the cluster).
 
 ## Configuration
 
-The tools rely on two configuration files. Both hold credentials and are kept out of version control.
+The tools rely on two configuration files. Both hold credentials, but they are managed differently: one you create and keep locally in the repo tree (gitignored, never committed); the other is a system file on the cluster that the infrastructure team maintains and you never touch.
 
 ### `config.yaml` — MySQL (you create this)
 
@@ -116,11 +98,11 @@ Connection details for the Slurm accounting database. Copy the template and fill
 cp config.yaml.example config.yaml
 ```
 
-It lives in the project root and is gitignored, so it is never committed. The accounting database is reachable only from the cluster, so run the tools there. The two analysis commands default to `config.yaml` in the directory you run them from; if it lives elsewhere, point them at it with `--config <path>`.
+It lives in the project root and is gitignored, so it is never committed. The accounting database is reachable only from the cluster, so run the tools there. The two CLI commands default to `config.yaml` in the directory you run them from; if it lives elsewhere, point them at it with `--config <path>`.
 
 ### `/etc/hpc_export_stats.yaml` — LDAP (infra-managed)
 
-Only needed when mapping users to faculties (`--collate_by st=faculty` or `--include-faculty`). This file is provisioned and maintained by the infrastructure team on the cluster — you do not create or edit it, but it must exist for faculty lookups to work. The two analysis commands default to `/etc/hpc_export_stats.yaml`; if your file lives elsewhere, override the path with `--ad_config <path>`. It contains the following keys:
+Only needed when mapping users to faculties (`--collate_by st=faculty` or `--include-faculty`). This file is provisioned and maintained by the infrastructure team on the cluster — you do not create or edit it, but it must exist for faculty lookups to work. The two CLI commands default to `/etc/hpc_export_stats.yaml`; if this file lives elsewhere, override the path with `--ad_config <path>`. It contains the following keys:
 
 | Key | Meaning |
 |-----|---------|
@@ -130,18 +112,11 @@ Only needed when mapping users to faculties (`--collate_by st=faculty` or `--inc
 | `ldap_binddn` | bind DN used to authenticate |
 | `ldap_password` | bind account password |
 
+Since the infrastructure team owns this file, confirm the exact key names and values with them if faculty lookups are not resolving.
+
 ## Usage
 
-Run from the repository root. The examples use the installed console commands
-(`hpc-aggregate-stats`, `hpc-job-stats`), available after `pip install`. The
-accounting database is reachable only from the cluster, so run these there.
-
-> **If a command is "not found"** (common on shared/cloud systems where the
-> package didn't install into the active Python environment), run the module
-> directly with the source on the path instead — the arguments are identical:
-> ```bash
-> PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats ...
-> ```
+Run from the repository root. The examples use the installed console commands (`hpc-aggregate-stats`, `hpc-job-stats`), available after `pip install`. The accounting database is reachable only from the cluster, so run these there.
 
 ### 1. Generate aggregate faculty statistics
 
@@ -163,30 +138,26 @@ hpc-job-stats \
     --output results/data/job_level_metrics.csv --include-faculty
 ```
 
-> **Output filenames are auto-prefixed with the date range.** The command above
-> actually writes `results/data/2025-01-01_2025-02-01_job_level_metrics.csv`,
-> not the bare name you passed. Generated CSVs contain usernames, so they are
-> gitignored and never committed.
+> **All output filenames are auto-prefixed with the date range.** The command above actually writes `results/data/2025-01-01_2025-02-01_job_level_metrics.csv`, not the bare name you passed. The prefix stops runs over different date ranges from overwriting each other and gives every output a consistent, self-describing name. Generated CSVs contain usernames, so they are gitignored and never committed.
 
-These two commands are also how you **regenerate the data** the notebooks read —
-both require cluster database access (and LDAP access for the `--collate_by` /
-`--include-faculty` faculty lookups).
+These two commands are the data-generation step (stage 1): they produce the CSVs in `results/data/` that the notebooks read. The CSVs are gitignored (not in the repo), so they must be regenerated before any notebook can run, and the date range you pass determines which jobs the analysis covers. Running them needs cluster database access (and LDAP access for the `--collate_by` / `--include-faculty` faculty lookups).
+
+> **If a command is "not found"** (common on shared/cloud systems where the package didn't install into the active Python environment), run the module directly with the source on the path instead — the arguments are identical:
+> ```bash
+> PYTHONPATH=src python3 -m hpc_data_analysis.aggregate_stats ...
+> ```
 
 ### 3. Run the notebooks
 
-Three notebooks are provided:
+All three notebooks read the CSVs produced in steps 1–2. To reproduce the analysis exactly as it appears in this repo, generate the data over the period the committed notebooks use — `--since 2025-07-01 --until 2025-12-31`, with both commands above — and the notebooks will reproduce the committed results. To analyse a different period instead, regenerate with a different range and update the notebooks' input paths to match.
 
-- **`notebooks/blog_2026-02_sustainability.ipynb`** — generates the publication-ready plots for the sustainability blog post (user perspective, **average efficiency**). Holds the most polished plotting code.
+The notebooks differ mainly in whether they report **average** or **weighted** efficiency (see [Weighted vs average efficiency](#weighted-vs-average-efficiency)). Each one — its perspective, purpose, and which CSVs it reads — is described in [`docs/notebooks.md`](docs/notebooks.md).
 
-- **`notebooks/visualisation_users.ipynb`** — User-focused analysis using **average efficiency** (each job counts equally). Use this for user training, feedback sessions, and helping users understand typical job efficiency.
-
-- **`notebooks/visualisation_infrastructure.ipynb`** — Infrastructure-focused analysis using **weighted efficiency** (larger jobs contribute more). Use this for capacity planning, resource allocation decisions, and understanding overall cluster utilisation.
-
-The notebooks read the CSV files generated in steps 1–2 (from `results/data/`) and include a Technical Appendix documenting the methodology.
-
-## What it computes
+## What this analysis computes
 
 ### Efficiency metrics
+
+`hpc-job-stats` outputs three types of efficiencies **per job** — the resource one job used divided by what it reserved (e.g. CPU efficiency = CPU time used / (elapsed × CPUs requested)):
 
 - **CPU efficiency**: total CPU time / (elapsed × requested CPUs). Can exceed 100% if jobs use more threads than requested CPUs.
 - **Memory efficiency**: peak memory used / requested memory. Can exceed 100% if memory limits are not enforced.
@@ -194,15 +165,29 @@ The notebooks read the CSV files generated in steps 1–2 (from `results/data/`)
 
 ### Weighted vs average efficiency
 
-| Metric | Formula | Best for |
+To summarise a **group** of jobs (a faculty, or the whole cluster), `hpc-aggregate-stats` combines those per-job efficiencies in two ways and reports *both* per faculty. Both use the same per-job `used` and `allocated` values; they differ only in how much each job counts:
+
+| Method | Formula | Best for |
 |--------|---------|----------|
-| **Weighted** | sum(used) / sum(allocated) × 100 | Infrastructure planning — larger jobs contribute more to the overall picture |
-| **Average** | mean(per-job efficiency) | User education — shows typical job efficiency, each job counts equally |
+| **Simple average** | mean over jobs of `(used / allocated) × 100` — each job counts **once** | User education — the typical job's efficiency |
+| **Weighted average** | `(Σ used / Σ allocated) × 100`, summed over all jobs — equivalently a mean weighted by `allocated`, so each job counts in proportion to what it reserved | Infrastructure view — a more representative efficiency figure, since each job is weighted by the resources it used, so large jobs (the ones with the biggest impact on the cluster) count for most |
+
+The average treats a 1-CPU job and a 512-CPU job equally, while the weighted figure lets the big job count for more.
 
 ### Job states
 
-- **Efficiency stats** include: COMPLETED, TIMEOUT, OUT_OF_MEMORY (jobs that ran and have meaningful resource usage)
-- **Success** = COMPLETED only
-- **Failed** = FAILED, TIMEOUT, NODE_FAIL, PREEMPTED, OUT_OF_MEMORY (not CANCELLED, which is intentional)
+Efficiency is computed only for jobs that ran and have meaningful usage — **COMPLETED**, **TIMEOUT**, and **OUT_OF_MEMORY**. *Success* (COMPLETED only) and *failure* (FAILED, TIMEOUT, NODE_FAIL, PREEMPTED, OUT_OF_MEMORY — not CANCELLED, which is intentional) are tracked separately. See [`docs/analysis/data_caveats.md`](docs/analysis/data_caveats.md) for which states are included and why.
 
-See the Technical Appendix in the notebooks for full details.
+## Documentation
+
+- **For analysts** interpreting results: see [`docs/analysis/`](docs/analysis/index.md)
+  - How efficiency metrics are calculated
+  - What good/bad efficiency looks like
+  - Known limitations and caveats
+
+- **For developers** working on the codebase: see [`docs/development/`](docs/development/index.md)
+  - Slurm database schema
+  - CPU and memory accounting details
+  - Dev scripts guide
+
+- **Notebook catalog:** [`docs/notebooks.md`](docs/notebooks.md) — what each notebook does
