@@ -13,6 +13,15 @@ All notebooks read their data from `results/data/`:
 
 `<dates>` is the `YYYY-MM-DD_YYYY-MM-DD` range prefix the commands add automatically. For what "average" vs "weighted" efficiency mean, see [Weighted vs average efficiency](../README.md#weighted-vs-average-efficiency) in the README for a quick summary, or [Aggregation Methods](analysis/efficiency_metrics.md#aggregation-methods) in the analyst docs for the fuller treatment.
 
+## Configuring a run
+
+Each notebook has a config cell at the top with the values you set by hand:
+
+- `DATE_FILTER` — the `YYYY-MM-DD_YYYY-MM-DD` range to load (or `None` to use the most recent CSVs in `RESULTS_DIR`). To analyse a different period, generate the CSVs for it (see [Run the notebooks](../README.md#3-run-the-notebooks)), set `DATE_FILTER` to match, and re-run all cells.
+- `RESULTS_DIR` — where the input CSVs live (default `../results/data`).
+
+A notebook that saves figures also sets a `PLOT_DIR` (the folder its PNGs are written to); one that only displays plots inline does not. To make an inline notebook save its figures, set a `PLOT_DIR` and add `savefig(...)` calls.
+
 ## The notebooks
 
 ### [`2026-02_sustainability_month_blog_post.ipynb`](../notebooks/2026-02_sustainability_month_blog_post.ipynb)

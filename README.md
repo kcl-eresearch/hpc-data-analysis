@@ -140,7 +140,7 @@ hpc-job-stats \
 
 > **All output filenames are auto-prefixed with the date range.** The command above actually writes `results/data/2025-01-01_2025-02-01_job_level_metrics.csv`, not the bare name you passed. The prefix stops runs over different date ranges from overwriting each other and gives every output a consistent, self-describing name. Generated CSVs contain usernames, so they are gitignored and never committed.
 
-These two commands are the data-generation step (stage 1): they produce the CSVs in `results/data/` that the notebooks read. The CSVs are gitignored (not in the repo), so they must be regenerated before any notebook can run, and the date range you pass determines which jobs the analysis covers. Running them needs cluster database access (and LDAP access for the `--collate_by` / `--include-faculty` faculty lookups).
+These two commands are the data-generation step (stage 1): they produce the CSVs in results/data/ that the notebooks read. The CSVs are gitignored (not in the repo), so they must be regenerated before any notebook can run, and the date range you pass determines which jobs the analysis covers. Running them needs cluster database access (and LDAP access for the `--collate_by` / `--include-faculty` faculty lookups).
 
 > **If a command is "not found"** (common on shared/cloud systems where the package didn't install into the active Python environment), run the module directly with the source on the path instead — the arguments are identical:
 > ```bash
