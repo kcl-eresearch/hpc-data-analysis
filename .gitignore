@@ -13,7 +13,8 @@ original_code/
 
 # Documentation (draft - to review before making public)
 docs/development/
-docs/analysis/
+docs/analysis/*
+!docs/analysis/open_questions.md
 *.pdf
 
 # Lock files
