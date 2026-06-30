@@ -79,12 +79,9 @@ before Feb 2026 (#6), and how absurd >1 TiB requests ran with zero OOM kills
 
 - **Status:** Resolved (with a very minor open question).
 - **Affects:** ~1.7M jobs (5.5%) of ~30.7M jobs in the database.
-- **Summary:** For a large minority of jobs, `alloc_cpus` is greater than `cpus_req` / the CPU value in `tres_req` — most
-  often 1 requested, 2 allocated.
-- **What we found:** Not caused by multi-threading (which is invisible to
-  Slurm).
-  It is hardware allocation granularity: whole physical cores are
-  allocated, and on hyperthreaded nodes one core = 2 logical CPUs (root cause A).
+- **What we found:** For a large minority of jobs, `alloc_cpus` is greater than `cpus_req` / the CPU value in `tres_req` — most often 1 requested, 2 allocated. 
+This is not caused by multi-threading (which is invisible to Slurm).
+It is hardware allocation granularity: whole physical cores are allocated, and on hyperthreaded nodes one core = 2 logical CPUs (root cause A).
 - **How the code handles it:** Both `cpus_req` (parsed from `tres_req`) and `alloc_cpus` (parsed from `tres_alloc`) are computed and carried through, so efficiency can be expressed against either denominator (see #3).
 - **What's still open:** Nothing significant. 
 The 323 jobs where `cpus_req` itself disagrees with the `tres_req` CPU value are unexplained edge cases, but at 0.001% of all jobs, they do not change the main results, so worth digging into only if nothing else has higher priority.
@@ -94,8 +91,7 @@ The 323 jobs where `cpus_req` itself disagrees with the `tres_req` CPU value are
 
 - **Status:** Partially open.
 - **Affects:** ~97k (~3.4%) of ~2.9M efficiency-eligible jobs (status (COMPLETED/TIMEOUT/OOM, in a given time window).
-- **Summary:** Some jobs show CPU efficiency above 100% — i.e. more CPU time used than `time elapsed × CPUs`.
-- **What we found:**
+- **What we found:** Some jobs show CPU efficiency above 100% — i.e. more CPU time used than `time elapsed × CPUs`.
   - **Using `cpus_req` inflates efficiencies** (root cause A): Whole-core rounding can give the job more CPUs than it asked for (e.g. requested 1, allocated 2) and its (multi-threaded) code uses them. Results will then be inflated if using `cpus_req` in the efficiency calculation.
   Recomputing against `alloc_cpus` brings these jobs to ~100%.
     - Threads are "invisible" to Slurm, but it doesn't allocate CPUs based on thread count; the `cgroup` still pins the whole job to its allocated cores (see next bullet point).
@@ -117,7 +113,7 @@ The cause is unknown — candidates include:
 ### 3. Requested vs allocated CPUs
 
 - **Status:** Design decision (not open).
-- **Summary:** CPU efficiency can be computed against requested CPUs
+- **What we found:** CPU efficiency can be computed against requested CPUs
   (`cpu_eff_req`) or allocated CPUs (`cpu_eff_alloc`). 
   Neither is "wrong" — they answer different questions, so both are produced and reported.
 - **The rationale:**
@@ -271,8 +267,9 @@ This is the wrong abstraction for the common case (single process, multiple thre
 ### 11. Does job efficiency actually reduce carbon?
 
 - **Status:** Partially open (framing decided; data gaps open).
-- **Summary:** Whether improving job efficiency yields a real CO₂ reduction (as "green computing" might suggest), and how to frame this honestly in the blog post.
-- **What we found/concluded:** Job efficiency does *not* directly save energy.
+- **Summary:** 
+- **What we found/concluded:** We had a discussion on whether improving job efficiency yields a real CO₂ reduction (as "green computing" might suggest), and how to frame this honestly in the blog post. 
+Clarified that job efficiency does *not* directly save energy.
 A core reserved-but-idle draws the same power as an unreserved idle core, and distributing the same work over more cores uses roughly the same total energy.
 The genuine sustainability links are:
   - **Embodied carbon.** Archer2 data splits an HPC job's emissions ~50:50 between electricity generation (scope 2) and hardware manufacture (scope 3), so running more jobs on the same hardware lowers per-job embodied carbon and reduces the pressure to buy new hardware.
