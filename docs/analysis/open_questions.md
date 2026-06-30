@@ -64,12 +64,12 @@ before Feb 2026 (#6), and how absurd >1 TiB requests ran with zero OOM kills
 | 4 | Multi-node jobs: CPU-time undercount | Open | Small; ~0.9% of jobs, multi-node CPU time understated |
 | 5 | Multi-step jobs: CPU-time summation | Open | Small; batch-vs-regular double-counting risk |
 | 6 | Memory handling before enforcement (pre-Feb 2026) | Understood | Frames all pre-Feb-2026 memory analysis |
-| 7 | Memory efficiency > 100% after enforcement | Partially open | 171 jobs (0.04%); 101 unexplained |
-| 8 | Extreme memory requests (>1 TiB) | Partially open | Distorts request plots; ~13 users |
+| 7 | Memory efficiency > 100% after enforcement | Partially open | 171 jobs (0.04%); 101 unexplained (Feb 2026 data) |
+| 8 | Extreme memory requests (>1 TiB) | Partially open | Small; dominated by ~13 users |
 | 9 | Interactive job detection | Resolved | 0.4% interactive vs 99.6% batch |
-| 10 | Multi-threaded request docs (`--ntasks` vs `--cpus-per-task`) | External action | CREATE docs amendment |
-| 11 | Job efficiency ↔ carbon framing | Partially open | Shapes the blog-post narrative |
-| 12 | Analysis runtime is flat across date ranges | Open (cause identified) | Both tools take ~50 min regardless of range |
+| 10 | Multi-threaded request docs (`--ntasks` vs `--cpus-per-task`) | External action | None |
+| 11 | Job efficiency ↔ carbon framing | Partially open | Shapes green computing narrative |
+| 12 | Analysis runtime is flat across date ranges | Open (cause identified) | None |
 
 ---
 
