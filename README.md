@@ -185,6 +185,8 @@ Efficiency is computed only for jobs that ran and have meaningful usage — **CO
   - What good/bad efficiency looks like
   - Known limitations and caveats
 
+- **Open questions & known issues:** [`docs/analysis/open_questions.md`](docs/analysis/open_questions.md) — the durable record of unresolved puzzles, assumptions, and methodological decisions behind specific results (e.g. why some efficiencies exceed 100%, the multi-node CPU undercount).
+
 - **For developers** working on the codebase: see [`docs/development/`](docs/development/index.md)
   - Slurm database schema
   - CPU and memory accounting details
