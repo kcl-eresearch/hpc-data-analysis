@@ -127,6 +127,7 @@ def main():
     else:
         special_steps_list = [step.split("=") for step in args.special_steps.split(",")]
         special_steps = {k: v for k,v in special_steps_list}
+    print(f"Special step IDs: {special_steps}", file=sys.stderr)
 
     # Process jobs — stream rows directly to CSV
     print("Querying jobs...", file=sys.stderr)

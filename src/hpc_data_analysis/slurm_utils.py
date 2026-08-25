@@ -221,7 +221,6 @@ def discover_special_steps(cursor):
     """)
     steps = {row[1]: row[0] for row in cursor.fetchall()}
 
-    print(f"Special step IDs: {steps}", file=sys.stderr)
     if 'batch' not in steps:
         print("WARNING: No 'batch' step found in step table", file=sys.stderr)
 
