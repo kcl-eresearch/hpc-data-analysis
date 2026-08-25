@@ -133,10 +133,6 @@ def main():
 
         for row in fetch_job_data(cursor, since_ts, until_ts, special_steps):
             job_count += 1
-            state = row[3]  # state is at index 3 (after job_db_inx, id_job, user)
-
-            if state not in INCLUDED_STATES:
-                continue
 
             job = calculate_job_metrics(row)
 
