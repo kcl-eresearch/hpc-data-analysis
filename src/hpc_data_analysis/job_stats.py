@@ -101,6 +101,8 @@ def main():
                         help="Include faculty column (requires LDAP lookup)")
     parser.add_argument("--faculty-attr", default="st",
                         help="LDAP attribute for faculty (default: st)")
+    parser.add_argument("--special-steps", action="store",
+                        help="Comma separated IDs for interactive and batch steps, e.g. 'interactive=-6,batch=-5'")
 
     args = parser.parse_args()
     since_ts, until_ts = parse_date_range(args.since, args.until)
@@ -120,7 +122,11 @@ def main():
     # Connect to MySQL and discover step IDs
     print("Connecting to MySQL...", file=sys.stderr)
     conn, cursor = connect_mysql(args.config)
-    special_steps = discover_special_steps(cursor)
+    if args.special_steps is None:
+        special_steps = discover_special_steps(cursor)
+    else:
+        special_steps_list = [step.split("=") for step in args.special_steps.split(",")]
+        special_steps = {k: v for k,v in special_steps_list}
 
     # Process jobs — stream rows directly to CSV
     print("Querying jobs...", file=sys.stderr)
