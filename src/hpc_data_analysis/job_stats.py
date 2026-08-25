@@ -33,6 +33,7 @@ def write_csv_header(outfile, include_faculty=False):
     headers.extend([
         "submission_type", "step_count",
         "state", "exit_code", "is_success",
+        "time_start", "time_end",
         "elapsed_sec", "wait_sec", "timelimit_sec",
         "cpu_eff_req", "cpu_eff_alloc", "mem_eff", "mem_eff_alloc", "time_eff",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
