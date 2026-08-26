@@ -60,7 +60,7 @@ def write_csv_row(job, outfile, include_faculty=False):
         "1" if job["is_success"] else "0",
         format_value(job["time_start"]),
         format_value(job["time_end"]),
-        str(job["partition"]),
+        f'"{job["partition"]}"',
         format_value(job["elapsed_sec"]),
         format_value(job["wait_sec"]),
         format_value(job["timelimit_sec"]),
