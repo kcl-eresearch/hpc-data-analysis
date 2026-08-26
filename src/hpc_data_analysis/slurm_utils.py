@@ -26,6 +26,7 @@ from ldap import filter as ldap_filter
 TRES_CPU_ID = 1
 TRES_MEM_ID = 2
 TRES_ENERGY_ID = 3
+TRES_GPU_ID = 1001
 
 # Slurm job states (numeric codes)
 # See: https://slurm.schedmd.com/squeue.html#SECTION_JOB-STATE-CODES
@@ -343,7 +344,7 @@ def calculate_job_metrics(row):
         - time_submit, time_start, time_end
         - elapsed_sec, wait_sec, timelimit_sec
         - user_cpu_sec, sys_cpu_sec, total_cpu_sec (all in seconds, including usec)
-        - req_cpus, alloc_cpus, maxrss_bytes, reqmem_bytes, allocmem_bytes
+        - req_cpus, alloc_cpus, req_gpus, alloc_gpus, maxrss_bytes, reqmem_bytes, allocmem_bytes
         - cpu_eff_req (based on req_cpus), cpu_eff_alloc (based on alloc_cpus)
         - mem_eff (based on requested mem), mem_eff_alloc (based on allocated mem)
         - mem_type ('per-cpu' or 'per-node')
@@ -386,6 +387,10 @@ def calculate_job_metrics(row):
         alloc_cpus = req_cpus  # fallback to requested if alloc not available
     step_count = int(step_count) if step_count else 0
     n_tasks = int(n_tasks) if n_tasks else 0
+
+    # GPU values from tres_req/tres_alloc
+    req_gpus = parse_tres_value(tres_req, TRES_GPU_ID)
+    alloc_gpus = parse_tres_value(tres_alloc, TRES_GPU_ID)
 
     # Memory values
     maxrss = int(max_mem_bytes) if max_mem_bytes else 0
@@ -432,6 +437,8 @@ def calculate_job_metrics(row):
         "total_cpu_sec": total_cpu,
         "req_cpus": req_cpus,
         "alloc_cpus": alloc_cpus,
+        "req_gpus": req_gpus,
+        "alloc_gpus": alloc_gpus,
         "maxrss_bytes": maxrss,
         "reqmem_bytes": reqmem,
         "allocmem_bytes": allocmem,

@@ -38,7 +38,7 @@ def write_csv_header(outfile, include_faculty=False):
         "cpu_eff_req", "cpu_eff_alloc", "mem_eff", "mem_eff_alloc", "time_eff",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
         "maxrss_bytes", "reqmem_bytes", "allocmem_bytes", "mem_type",
-        "req_cpus", "alloc_cpus", "n_nodes", "n_tasks",
+        "req_cpus", "alloc_cpus", "req_gpus", "alloc_gpus", "n_nodes", "n_tasks",
         "submit_line_ntasks", "submit_line_cpus_per_task", "submit_line_interactive"
     ])
     print(",".join(headers), file=outfile)
@@ -79,6 +79,8 @@ def write_csv_row(job, outfile, include_faculty=False):
         job.get("mem_type", "unknown"),
         str(job["req_cpus"]),
         str(job.get("alloc_cpus", job["req_cpus"])),
+        str(job["req_gpus"]),
+        str(job["alloc_gpus"]),
         str(job["n_nodes"]),
         str(job.get("n_tasks", 0)),
         format_value(job.get("submit_line_ntasks")),
