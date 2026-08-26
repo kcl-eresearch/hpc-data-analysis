@@ -270,12 +270,14 @@ def fetch_job_data(cursor, since_ts, until_ts, special_steps):
             j.time_submit,
             j.time_start,
             j.time_end,
+            j.partition,
             j.cpus_req,
             j.tres_req,
             j.tres_alloc,
             j.timelimit,
             j.nodes_alloc,
             j.mem_req,
+
             COALESCE(
                 NULLIF(SUM(CASE WHEN s.id_step NOT IN ({exclude_ids})
                                 THEN s.user_sec ELSE 0 END), 0),
@@ -352,7 +354,7 @@ def calculate_job_metrics(row):
         - submission_type ('batch', 'interactive', or 'unknown')
     """
     (job_db_inx, id_job, username, state, exit_code, time_submit, time_start,
-     time_end, cpus_req_col, tres_req, tres_alloc, timelimit, nodes_alloc,
+     time_end, partition, cpus_req_col, tres_req, tres_alloc, timelimit, nodes_alloc,
      mem_req_raw, total_user_sec, total_sys_sec, total_user_usec, total_sys_usec,
      max_mem_bytes, submission_type, step_count, n_tasks, submit_line) = row
 
@@ -421,6 +423,7 @@ def calculate_job_metrics(row):
         "time_submit": time_submit,
         "time_start": time_start,
         "time_end": time_end,
+        "partition": partition,
         "elapsed_sec": elapsed,
         "wait_sec": wait_time,
         "timelimit_sec": timelimit_sec,

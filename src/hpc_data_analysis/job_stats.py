@@ -33,7 +33,7 @@ def write_csv_header(outfile, include_faculty=False):
     headers.extend([
         "submission_type", "step_count",
         "state", "exit_code", "is_success",
-        "time_start", "time_end",
+        "time_start", "time_end", "partition",
         "elapsed_sec", "wait_sec", "timelimit_sec",
         "cpu_eff_req", "cpu_eff_alloc", "mem_eff", "mem_eff_alloc", "time_eff",
         "total_cpu_sec", "user_cpu_sec", "sys_cpu_sec", "user_cpu_pct",
@@ -60,6 +60,7 @@ def write_csv_row(job, outfile, include_faculty=False):
         "1" if job["is_success"] else "0",
         format_value(job["time_start"]),
         format_value(job["time_end"]),
+        str(job["partition"]),
         format_value(job["elapsed_sec"]),
         format_value(job["wait_sec"]),
         format_value(job["timelimit_sec"]),
